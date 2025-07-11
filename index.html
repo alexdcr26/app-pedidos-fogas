@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Pedidos e Fornecedores</title>
+    <meta name="theme-color" content="#0d113e">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js CDN for sound effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark-primary: #0d113e;
+            --bg-dark-secondary: #1a2049;
+            --text-light-primary: #f0f0f0;
+            --text-light-secondary: #a0a0c0;
+            --accent-green: #00ff9d;
+            --accent-red: #ff003c;
+            --accent-blue: #00b8ff;
+            --accent-yellow: #ffd700;
+            --accent-purple: #9c27b0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark-primary);
+            color: var(--text-light-primary);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark-secondary); }
+        ::-webkit-scrollbar-thumb { background: var(--accent-blue); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #0099cc; }
+
+        .main-container {
+            background-color: var(--bg-dark-secondary);
+            border: 1px solid var(--accent-blue);
+            box-shadow: 0 0 25px rgba(0, 184, 255, 0.2);
+        }
+
+        .header-container { position: relative; display: flex; justify-content: center; align-items: center; text-align: center; }
+        .header-container .logo { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 60px; height: auto; border-radius: 8px; }
+        .header-container h1 { color: var(--text-light-primary); text-shadow: 0 0 10px rgba(0, 184, 255, 0.5); }
+
+        .tab-button {
+            color: var(--text-light-secondary); border-bottom: 4px solid transparent; transition: all 0.3s ease;
+            padding: 1rem 1.5rem; font-size: 1.25rem; font-weight: 600; line-height: 1.25;
+        }
+        .tab-button:hover { color: var(--text-light-primary); border-bottom-color: var(--accent-blue); }
+        .tab-button.active { color: var(--accent-green); border-bottom-color: var(--accent-green); font-weight: 700; }
+
+        .kpi-card {
+            background: linear-gradient(145deg, var(--bg-dark-secondary), #12163a); border-radius: 0.75rem; padding: 1.5rem;
+            border: 1px solid transparent; transition: all 0.3s ease; position: relative; overflow: hidden;
+            cursor: pointer;
+        }
+        .kpi-card:before {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: conic-gradient(transparent, rgba(255, 255, 255, 0.1), transparent 30%);
+            animation: rotate 4s linear infinite;
+        }
+        .kpi-card:hover { transform: translateY(-5px) scale(1.03); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .kpi-card .title { color: var(--text-light-secondary); }
+        .kpi-card .value { font-weight: 800; text-shadow: 0 0 15px var(--glow-color); }
+        .kpi-card.red { --glow-color: var(--accent-red); border-left: 4px solid var(--accent-red); color: var(--accent-red); }
+        .kpi-card.yellow { --glow-color: var(--accent-yellow); border-left: 4px solid var(--accent-yellow); color: var(--accent-yellow); }
+        .kpi-card.blue { --glow-color: var(--accent-blue); border-left: 4px solid var(--accent-blue); color: var(--accent-blue); }
+        .kpi-card.green { --glow-color: var(--accent-green); border-left: 4px solid var(--accent-green); color: var(--accent-green); }
+        .kpi-card.purple { --glow-color: var(--accent-purple); border-left: 4px solid var(--accent-purple); color: var(--accent-purple); }
+
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
+        
+        .table-container { background-color: var(--bg-dark-secondary); border-radius: 0.75rem; overflow: hidden; }
+        table thead { background-color: rgba(0, 184, 255, 0.1); }
+        table th { color: var(--accent-blue); }
+        table tr { border-color: var(--bg-dark-primary); }
+        table td { color: var(--text-light-secondary); }
+        table tbody tr:hover td { background-color: rgba(255, 255, 255, 0.05) !important; color: var(--text-light-primary); }
+
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(13, 17, 62, 0.8); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+            display: flex; justify-content: center; align-items: center; z-index: 1000;
+            opacity: 1; transition: opacity 0.5s ease;
+            perspective: 1000px;
+        }
+        
+        .modal-content {
+            background-color: var(--bg-dark-secondary); border: 1px solid var(--accent-blue);
+            box-shadow: 0 0 40px rgba(0, 184, 255, 0.3), 0 0 15px rgba(0, 0, 0, 0.5);
+            padding: 2rem; border-radius: 0.75rem; position: relative;
+            opacity: 1;
+            transform: scale(1) translateY(0) rotateX(0);
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease-out;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .modal.hidden .modal-content {
+            opacity: 0;
+            transform: scale(0.7) translateY(50px) rotateX(-45deg);
+        }
+
+        .modal-close-button {
+            position: absolute; top: 0.75rem; right: 0.75rem; background-color: rgba(255, 255, 255, 0.1);
+            border: none; border-radius: 50%; width: 2.5rem; height: 2.5rem; display: flex;
+            align-items: center; justify-content: center; font-size: 1.25rem; font-weight: bold;
+            line-height: 1; cursor: pointer; color: var(--text-light-secondary); transition: all 0.3s ease; z-index: 10;
+        }
+        .modal-close-button:hover { background-color: var(--accent-red); color: var(--text-light-primary); transform: rotate(90deg) scale(1.1); }
+
+        label { color: var(--text-light-secondary); }
+        input, select, textarea {
+            background-color: var(--bg-dark-primary); border: 1px solid var(--bg-dark-secondary);
+            color: var(--text-light-primary); border-radius: 0.375rem; transition: all 0.3s ease;
+        }
+        input:focus, select:focus, textarea:focus {
+            background-color: var(--bg-dark-secondary); border-color: var(--accent-blue);
+            box-shadow: 0 0 10px rgba(0, 184, 255, 0.3); outline: none;
+        }
+
+        .btn {
+            border-radius: 0.5rem; font-weight: 600; padding: 0.75rem 1.5rem;
+            transition: all 0.3s ease; border: none; cursor: pointer; text-transform: uppercase;
+            letter-spacing: 1px; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background-color: var(--accent-green); color: var(--bg-dark-primary); box-shadow: 0 0 15px rgba(0, 255, 157, 0.4); }
+        .btn-primary:hover:not(:disabled) { background-color: #00e68a; transform: translateY(-2px); box-shadow: 0 0 25px rgba(0, 255, 157, 0.6); }
+        .btn-secondary { background-color: var(--accent-blue); color: var(--bg-dark-primary); box-shadow: 0 0 15px rgba(0, 184, 255, 0.4); }
+        .btn-danger { background-color: var(--accent-red); color: var(--text-light-primary); box-shadow: 0 0 15px rgba(255, 0, 60, 0.4); }
+        .btn-warning { background-color: var(--accent-yellow); color: var(--bg-dark-primary); box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
+        
+        .fab {
+            background-color: var(--accent-green); color: var(--bg-dark-primary); width: 60px; height: 60px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; font-weight: 700; box-shadow: 0 0 20px rgba(0, 255, 157, 0.5); transition: all 0.3s ease;
+        }
+        .fab:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 0 30px rgba(0, 255, 157, 0.7); }
+        
+        .loading-overlay {
+            background: rgba(13, 17, 62, 0.9); display: flex; justify-content: center; align-items: center;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999;
+        }
+        .spinner {
+            border-left-color: var(--accent-green); animation: spin 1s linear infinite;
+            border: 4px solid var(--bg-dark-secondary); border-radius: 50%; width: 50px; height: 50px;
+        }
+        .btn .spinner-sm { width: 20px; height: 20px; border-width: 2px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .global-message {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            padding: 1rem 2rem; border-radius: 0.5rem; color: white;
+            z-index: 10000; font-weight: 600; display: flex; align-items: center; gap: 0.75rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            opacity: 0; animation: fadeInDown 0.5s forwards;
+        }
+        .global-message.hidden { animation: fadeOutUp 0.5s forwards; }
+        .global-message.success { background-color: var(--accent-green); color: var(--bg-dark-primary); }
+        .global-message.error { background-color: var(--accent-red); color: var(--text-light-primary); }
+        @keyframes fadeInDown { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        @keyframes fadeOutUp { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -20px); } }
+
+        .message-box {
+            border-radius: 0.5rem; padding: 0.75rem 1rem; text-align: center; font-weight: 600;
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        }
+        .message-box svg { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
+        .message-box.success { background-color: rgba(0, 255, 157, 0.1); color: var(--accent-green); border: 1px solid var(--accent-green); }
+        .message-box.error { background-color: rgba(255, 0, 60, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); }
+        .message-box.warning { background-color: rgba(255, 215, 0, 0.1); color: var(--accent-yellow); border: 1px solid var(--accent-yellow); }
+
+        .tab-content { display: none; animation: fadeIn 0.5s ease-in-out; }
+        .tab-content.active { display: block; }
+        .tab-content.exiting { animation: fadeOut 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
+
+        .kanban-card { animation: popIn 0.4s ease-out backwards; }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+
+        .pulse-alert-red { animation: pulse-red 1.5s infinite; }
+        @keyframes pulse-red {
+            0%, 100% { background-color: rgba(255, 0, 60, 0.2); border-color: rgba(255, 0, 60, 0.7); box-shadow: 0 0 5px rgba(255, 0, 60, 0.2); }
+            50% { background-color: rgba(255, 0, 60, 0.4); border-color: rgba(255, 0, 60, 1); box-shadow: 0 0 20px rgba(255, 0, 60, 0.5); }
+        }
+        
+        #offline-indicator {
+            position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%);
+            background-color: var(--accent-yellow); color: var(--bg-dark-primary);
+            padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600;
+            z-index: 2000; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #offline-indicator.visible { transform: translateX(-50%) translateY(-110px); }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8 lg:p-10">
+
+    <div id="offline-indicator">Você está offline. Os dados serão sincronizados.</div>
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p class="ml-4 text-lg">Processando...</p>
+    </div>
+    <div id="globalMessage" class="global-message hidden"></div>
+
+    <!-- Modal para Lançamento/Edição de Pedidos -->
+    <div id="newOrderModal" class="modal hidden">
+        <div class="modal-content w-full max-w-4xl">
+            <button class="modal-close-button" id="closeNewOrderModal">&times;</button>
+            <h2 id="newOrderModalTitle" class="text-2xl font-semibold text-white mb-6">Novo Lançamento de Pedido</h2>
+            <input type="hidden" id="editingPedidoId">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div><label for="numeroPedido">Número do Pedido:</label><input type="text" id="numeroPedido" class="w-full p-2 mt-1"></div>
+                <div><label for="fornecedorInputList">Fornecedor:</label><input type="text" id="fornecedorInputList" list="fornecedoresList" class="w-full p-2 mt-1" placeholder="Digite ou selecione"><datalist id="fornecedoresList"></datalist></div>
+                <div><label for="nomeColaborador">Nome do Colaborador:</label><select id="nomeColaborador" class="w-full p-2 mt-1"></select></div>
+                <div class="md:col-span-2"><label for="descricaoPedido">Descrição do Pedido:</label><textarea id="descricaoPedido" rows="3" class="w-full p-2 mt-1"></textarea></div>
+                <div><label for="valorTotal">Valor Total (R$):</label><input type="number" id="valorTotal" step="0.01" class="w-full p-2 mt-1"></div>
+                <div><label for="dataVencimento">Data de Vencimento (Opcional):</label><input type="date" id="dataVencimento" class="w-full p-2 mt-1"></div>
+                <div><label for="numeroNotaFiscal">Nº Nota Fiscal (Opcional):</label><input type="text" id="numeroNotaFiscal" class="w-full p-2 mt-1"></div>
+                <div><label for="dataEmissaoNF">Emissão da NF (Opcional):</label><input type="date" id="dataEmissaoNF" class="w-full p-2 mt-1"></div>
+                <div class="md:col-span-2"><label for="observacoes">Observações:</label><textarea id="observacoes" rows="3" class="w-full p-2 mt-1"></textarea></div>
+            </div>
+            <button id="submitOrderButton" class="w-full btn btn-primary">
+                <span class="btn-text">Lançar Pedido</span>
+                <div class="spinner spinner-sm hidden"></div>
+            </button>
+            <div id="messageBoxNewOrderModal" class="mt-4 message-box hidden"></div>
+        </div>
+    </div>
+
+    <!-- Modal para Novo Fornecedor -->
+    <div id="newFornecedorModal" class="modal hidden">
+        <div class="modal-content w-full max-w-md">
+            <button class="modal-close-button" id="closeFornecedorModal">&times;</button>
+            <h2 class="text-2xl font-semibold text-white mb-6">Novo Fornecedor</h2>
+            <div><label for="modalFornecedorNome">Nome do Fornecedor:</label><input type="text" id="modalFornecedorNome" class="w-full p-2 mt-1"></div>
+            <button id="btnAdicionarFornecedor" class="w-full btn btn-primary mt-6">Adicionar</button>
+            <div id="messageBoxFornecedores" class="mt-4 message-box hidden"></div>
+        </div>
+    </div>
+
+    <!-- Modal para Novo Colaborador -->
+    <div id="newColaboradorModal" class="modal hidden">
+        <div class="modal-content w-full max-w-md">
+            <button class="modal-close-button" id="closeColaboradorModal">&times;</button>
+            <h2 class="text-2xl font-semibold text-white mb-6">Novo Colaborador</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="modalColaboradorNome">Nome do Colaborador:</label>
+                    <input type="text" id="modalColaboradorNome" class="w-full p-2 mt-1">
+                </div>
+                <div>
+                    <label for="modalColaboradorEmail">Email do Colaborador:</label>
+                    <input type="email" id="modalColaboradorEmail" class="w-full p-2 mt-1" placeholder="exemplo@email.com">
+                </div>
+            </div>
+            <button id="btnAdicionarColaborador" class="w-full btn btn-primary mt-6">Adicionar</button>
+            <div id="messageBoxColaboradores" class="mt-4 message-box hidden"></div>
+        </div>
+    </div>
+
+    <div id="kpiDetailsModal" class="modal hidden">
+        <div class="modal-content w-full max-w-2xl">
+            <button class="modal-close-button" id="closeKpiDetailsModal">&times;</button>
+            <h2 id="kpiDetailsModalTitle" class="text-2xl font-semibold text-white mb-6">Detalhes</h2>
+            <div id="kpiDetailsModalList" class="space-y-4">
+                <!-- Conteúdo será gerado dinamicamente -->
+            </div>
+             <p id="kpiDetailsModalEmpty" class="text-center text-gray-400 hidden">Nenhum pedido nesta categoria.</p>
+        </div>
+    </div>
+
+
+    <div class="main-container max-w-7xl mx-auto shadow-lg rounded-xl p-6 sm:p-8">
+        <div class="header-container mb-4">
+             <div>
+                <h1 class="text-3xl sm:text-4xl font-bold">Controle de Pedidos</h1>
+                <p class="text-lg text-blue-300 tracking-widest mt-2">SETOR DE MANUTENÇÃO FOGÁS</p>
+            </div>
+            <img src="https://images.seeklogo.com/logo-png/40/2/fogas-logo-png_seeklogo-400101.png" alt="Logo FOGÁS" class="logo" onerror="this.style.display='none'">
+        </div>
+        <div class="text-center mb-6">
+            <p id="userIdDisplay" class="text-sm text-gray-400 hidden"></p>
+            <p id="lastVisitDisplay" class="text-xs text-gray-500"></p>
+        </div>
+
+        <!-- Navegação por Abas -->
+        <div class="flex border-b border-gray-700 mb-6">
+            <button data-tab="Graficos" class="tab-button active">Dashboard</button>
+            <button data-tab="Pedidos" class="tab-button">Pedidos</button>
+            <button data-tab="Acompanhamento" class="tab-button">Acompanhamento</button>
+            <button data-tab="Cadastros" class="tab-button ml-auto">Cadastros</button>
+        </div>
+
+        <!-- Conteúdo das Abas -->
+        <div id="contentGraficos" class="tab-content active">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div id="kpiAtrasados" class="kpi-card red"><p class="title">Atrasados</p><p id="countAtrasados" class="value text-4xl">0</p></div>
+                <div id="kpiPertoVencimento" class="kpi-card yellow"><p class="title">Perto do Vencimento</p><p id="countPertoVencimento" class="value text-4xl">0</p></div>
+                <div id="kpiDentroPrazo" class="kpi-card blue"><p class="title">Dentro do Prazo</p><p id="countDentroPrazo" class="value text-4xl">0</p></div>
+                <div id="kpiEntregues" class="kpi-card green"><p class="title">Entregues</p><p id="countEntregues" class="value text-4xl">0</p></div>
+                <div id="kpiSemNF" class="kpi-card purple"><p class="title">Pedidos Sem NF</p><p id="countSemNF" class="value text-4xl">0</p></div>
+            </div>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
+                <div class="p-6 rounded-lg bg-dark-primary/50"><h3 class="text-xl font-semibold text-yellow-300 mb-4">Pedidos em Risco de Atraso</h3><ul id="listPertoVencimento" class="space-y-3"></ul><p id="noPertoVencimentoMessage" class="text-center mt-2 hidden">Nenhum pedido em risco.</p></div>
+                <div class="p-6 rounded-lg bg-dark-primary/50"><h3 class="text-xl font-semibold text-red-400 mb-4">Pedidos Atrasados</h3><ul id="listAtrasados" class="space-y-3"></ul><p id="noAtrasadosMessage" class="text-center mt-2 hidden">Nenhum pedido atrasado.</p></div>
+            </div>
+            <div class="mt-8 p-6 rounded-lg bg-dark-primary/50">
+                <h3 class="text-xl font-semibold text-purple-400 mb-4">Pendências de Pedidos sem Número de NF (+30 dias)</h3>
+                <ul id="listPendentesNF" class="space-y-3"></ul>
+                <p id="noPendentesNFMessage" class="text-center mt-2 hidden">Nenhum pedido com NF pendente há mais de 30 dias.</p>
+            </div>
+        </div>
+        <div id="contentPedidos" class="tab-content">
+            <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                <div class="flex items-center gap-4">
+                    <input type="text" id="searchPedido" class="w-full max-w-xs p-2" placeholder="Pesquisar por Pedido...">
+                    <button id="addOrderBtnPedidosTab" class="btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                        Novo Pedido
+                    </button>
+                </div>
+                <button id="exportCsvBtn" class="btn btn-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                    Exportar para CSV
+                </button>
+            </div>
+            <div class="table-container"><table class="min-w-full"><thead><tr>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase">Pedido</th><th class="px-4 py-3 text-left text-xs font-medium uppercase">Fornecedor</th><th class="px-4 py-3 text-left text-xs font-medium uppercase">Colaborador</th><th class="px-4 py-3 text-left text-xs font-medium uppercase">Valor</th><th class="px-4 py-3 text-left text-xs font-medium uppercase">NF</th><th class="px-4 py-3 text-left text-xs font-medium uppercase">Vencimento</th><th class="px-4 py-3 text-left text-xs font-medium uppercase">Status</th><th class="px-4 py-3 text-left text-xs font-medium uppercase">Ações</th>
+            </tr></thead><tbody id="pedidosTableBody"></tbody></table></div>
+            <div id="noPedidosMessage" class="text-center p-8 hidden">Nenhum pedido lançado ainda.</div>
+        </div>
+        <div id="contentAcompanhamento" class="tab-content">
+            <div class="mb-6 flex items-center">
+                <label for="colaboradorFilterSelect" class="mr-4 text-lg font-semibold text-gray-300">Visualizar:</label>
+                <select id="colaboradorFilterSelect" class="p-2 rounded-lg bg-dark-primary border-2 border-blue-500 text-white focus:outline-none focus:border-accent-green"></select>
+            </div>
+            <div id="acompanhamentoContainer" class="space-y-8"></div>
+            <p id="noAcompanhamentoMessage" class="text-center text-xl mt-8 hidden">Nenhum colaborador com pendências.</p>
+        </div>
+        <div id="contentCadastros" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold text-white">Fornecedores</h2><button id="openFornecedorModalBtn" class="btn btn-primary">Novo</button></div>
+                    <div class="table-container"><table class="min-w-full"><thead><tr><th class="px-4 py-3 text-left text-xs font-medium uppercase">Nome</th><th class="px-4 py-3 text-left text-xs font-medium uppercase">Ações</th></tr></thead><tbody id="fornecedoresTableBody"></tbody></table></div>
+                    <div id="noFornecedoresMessage" class="text-center p-8 hidden">Nenhum fornecedor cadastrado.</div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold text-white">Colaboradores</h2><button id="openColaboradorModalBtn" class="btn btn-primary">Novo</button></div>
+                    <div class="table-container"><table class="min-w-full"><thead><tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium uppercase">Nome</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium uppercase">Email</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium uppercase">Ações</th>
+                    </tr></thead><tbody id="colaboradoresTableBody"></tbody></table></div>
+                    <div id="noColaboradoresMessage" class="text-center p-8 hidden">Nenhum colaborador cadastrado.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <button id="fabAddOrder" title="Adicionar novo pedido" class="fab fixed bottom-8 right-8">+</button>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, addDoc, getDocs, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Início da Alteração: Novas chaves do Firebase
+        const firebaseConfig = {
+          apiKey: "AIzaSyCLriPUW86EBROvAbMTJw4M3u3g6Jjdanw",
+          authDomain: "app-pedidos-fogas.firebaseapp.com",
+          projectId: "app-pedidos-fogas",
+          storageBucket: "app-pedidos-fogas.appspot.com",
+          messagingSenderId: "1016768034666",
+          appId: "1:1016768034666:web:b5d9301436ed22cfc39713"
+        };
+        // Fim da Alteração
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        enableIndexedDbPersistence(db).catch((err) => {
+            if (err.code == 'failed-precondition') console.warn("Persistência offline falhou: múltiplas abas abertas.");
+            else if (err.code == 'unimplemented') console.warn("Persistência offline não suportada neste navegador.");
+        });
+
+        let pedidos = [], fornecedores = [], colaboradores = [], userId = null, currentEditingPedidoId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const getEl = (id) => document.getElementById(id);
+            const elements = {
+                loadingOverlay: getEl('loadingOverlay'), globalMessage: getEl('globalMessage'),
+                newOrderModal: getEl('newOrderModal'), newOrderModalTitle: getEl('newOrderModalTitle'), editingPedidoIdInput: getEl('editingPedidoId'),
+                submitOrderButton: getEl('submitOrderButton'), closeNewOrderModalButton: getEl('closeNewOrderModal'), messageBoxNewOrderModal: getEl('messageBoxNewOrderModal'),
+                numeroPedidoInput: getEl('numeroPedido'), fornecedorInputList: getEl('fornecedorInputList'), fornecedoresDatalist: getEl('fornecedoresList'),
+                nomeColaboradorSelect: getEl('nomeColaborador'), descricaoPedidoInput: getEl('descricaoPedido'), valorTotalInput: getEl('valorTotal'),
+                numeroNotaFiscalInput: getEl('numeroNotaFiscal'), dataEmissaoNFInput: getEl('dataEmissaoNF'), dataVencimentoInput: getEl('dataVencimento'),
+                observacoesInput: getEl('observacoes'), pedidosTableBody: getEl('pedidosTableBody'), noPedidosMessage: getEl('noPedidosMessage'),
+                searchPedidoInput: getEl('searchPedido'),
+                newFornecedorModal: getEl('newFornecedorModal'), closeFornecedorModal: getEl('closeFornecedorModal'), openFornecedorModalBtn: getEl('openFornecedorModalBtn'),
+                modalFornecedorNomeInput: getEl('modalFornecedorNome'), btnAdicionarFornecedor: getEl('btnAdicionarFornecedor'),
+                fornecedoresTableBody: getEl('fornecedoresTableBody'), messageBoxFornecedores: getEl('messageBoxFornecedores'), noFornecedoresMessage: getEl('noFornecedoresMessage'),
+                newColaboradorModal: getEl('newColaboradorModal'), closeColaboradorModal: getEl('closeColaboradorModal'), openColaboradorModalBtn: getEl('openColaboradorModalBtn'),
+                modalColaboradorNomeInput: getEl('modalColaboradorNome'),
+                modalColaboradorEmailInput: getEl('modalColaboradorEmail'),
+                btnAdicionarColaborador: getEl('btnAdicionarColaborador'),
+                colaboradoresTableBody: getEl('colaboradoresTableBody'), messageBoxColaboradores: getEl('messageBoxColaboradores'), noColaboradoresMessage: getEl('noColaboradoresMessage'),
+                kpiAtrasados: getEl('kpiAtrasados'), kpiPertoVencimento: getEl('kpiPertoVencimento'), kpiDentroPrazo: getEl('kpiDentroPrazo'), kpiEntregues: getEl('kpiEntregues'), kpiSemNF: getEl('kpiSemNF'),
+                countAtrasados: getEl('countAtrasados'), countPertoVencimento: getEl('countPertoVencimento'), countDentroPrazo: getEl('countDentroPrazo'),
+                countEntregues: getEl('countEntregues'), countSemNF: getEl('countSemNF'),
+                listPertoVencimento: getEl('listPertoVencimento'), listAtrasados: getEl('listAtrasados'), noPertoVencimentoMessage: getEl('noPertoVencimentoMessage'),
+                noAtrasadosMessage: getEl('noAtrasadosMessage'), listPendentesNF: getEl('listPendentesNF'), noPendentesNFMessage: getEl('noPendentesNFMessage'),
+                userIdDisplay: getEl('userIdDisplay'), fabAddOrder: getEl('fabAddOrder'),
+                acompanhamentoContainer: getEl('acompanhamentoContainer'), noAcompanhamentoMessage: getEl('noAcompanhamentoMessage'),
+                colaboradorFilterSelect: getEl('colaboradorFilterSelect'), exportCsvBtn: getEl('exportCsvBtn'), offlineIndicator: getEl('offline-indicator'),
+                addOrderBtnPedidosTab: getEl('addOrderBtnPedidosTab'),
+                lastVisitDisplay: getEl('lastVisitDisplay'),
+                kpiDetailsModal: getEl('kpiDetailsModal'),
+                kpiDetailsModalTitle: getEl('kpiDetailsModalTitle'),
+                kpiDetailsModalList: getEl('kpiDetailsModalList'),
+                kpiDetailsModalEmpty: getEl('kpiDetailsModalEmpty'),
+                closeKpiDetailsModal: getEl('closeKpiDetailsModal'),
+            };
+            
+            const warningIconSVG = `<svg class="w-6 h-6 inline-block text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.109a.75.75 0 01.986 0l7.25 12.75A.75.75 0 0115.75 17H4.25a.75.75 0 01-.743-1.141l7.25-12.75zM9 9a1 1 0 112 0v2a1 1 0 11-2 0V9zm2 6a1 1 0 10-2 0 1 1 0 002 0z" clip-rule="evenodd" /></svg>`;
+
+            const playSound = (type) => {
+                if (typeof Tone === 'undefined' || Tone.context.state !== 'running') return;
+                const sounds = {
+                    tab: { note: 'C5', duration: '16n', volume: -18 }, open: { note: 'E5', duration: '16n', volume: -15 },
+                    close: { note: 'C4', duration: '16n', volume: -15 }, success: { note: 'G5', duration: '16n', volume: -12 },
+                    error: { note: 'C3', duration: '8n', volume: -10 }, click: { note: 'C6', duration: '32n', volume: -20 }
+                };
+                const sound = sounds[type]; if (!sound) return;
+                const synth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 0.1 } }).toDestination();
+                synth.volume.value = sound.volume;
+                synth.triggerAttackRelease(sound.note, sound.duration);
+            };
+            
+            const startAudio = () => { if (typeof Tone !== 'undefined' && Tone.context.state !== 'running') Tone.start(); };
+            document.body.addEventListener('click', startAudio, { once: true });
+
+            const showGlobalMessage = (message, type = 'success') => {
+                const el = elements.globalMessage;
+                if (!el) return;
+                const icons = {
+                    success: '✅',
+                    error: '❌'
+                };
+                el.innerHTML = `<span>${icons[type]}</span> ${message}`;
+                el.className = `global-message ${type}`;
+                setTimeout(() => el.classList.add('hidden'), 4000);
+            };
+
+            const showMessage = (message, type = 'success', messageBoxElement) => {
+                if (!messageBoxElement) return;
+                if(type === 'error') playSound('error');
+                const icons = {
+                    success: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>`,
+                    error: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>`,
+                    warning: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.109a.75.75 0 01.986 0l7.25 12.75A.75.75 0 0115.75 17H4.25a.75.75 0 01-.743-1.141l7.25-12.75zM9 9a1 1 0 112 0v2a1 1 0 11-2 0V9zm2 6a1 1 0 10-2 0 1 1 0 002 0z" clip-rule="evenodd" /></svg>`
+                };
+                messageBoxElement.innerHTML = `${icons[type] || ''}<span>${message}</span>`;
+                messageBoxElement.className = `message-box ${type}`;
+                messageBoxElement.classList.remove('hidden');
+                setTimeout(() => messageBoxElement.classList.add('hidden'), 3000);
+            };
+
+            const formatDate = (dateString) => {
+                if (!dateString) return 'N/A';
+                const [year, month, day] = dateString.split('-');
+                return `${day}/${month}/${year}`;
+            };
+            const formatCurrency = (value) => parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            
+            const clearOrderForm = () => {
+                elements.newOrderModal.querySelectorAll('input, select, textarea').forEach(el => el.value = '');
+                currentEditingPedidoId = null;
+                elements.editingPedidoIdInput.value = '';
+                elements.newOrderModalTitle.textContent = 'Novo Lançamento de Pedido';
+                const btn = elements.submitOrderButton, btnText = btn.querySelector('.btn-text');
+                btnText.textContent = 'Lançar Pedido';
+                btn.disabled = false;
+                btn.querySelector('.spinner').classList.add('hidden');
+                btnText.classList.remove('hidden');
+                elements.messageBoxNewOrderModal.classList.add('hidden');
+            };
+            
+            const openModal = (modalElement) => { playSound('open'); modalElement.classList.remove('hidden'); };
+            const closeModal = (modalElement) => { playSound('close'); modalElement.classList.add('hidden'); };
+
+            const renderPedidosTable = () => {
+                elements.pedidosTableBody.innerHTML = '';
+                const searchTerm = elements.searchPedidoInput.value.toLowerCase();
+                const filteredPedidos = pedidos.filter(p => p.numeroPedido.toLowerCase().includes(searchTerm)).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                elements.noPedidosMessage.classList.toggle('hidden', filteredPedidos.length > 0);
+                filteredPedidos.forEach(pedido => {
+                    const row = elements.pedidosTableBody.insertRow();
+                    const today = new Date(); today.setHours(0,0,0,0);
+                    const vencimentoDate = pedido.dataVencimento ? new Date(pedido.dataVencimento + 'T00:00:00') : null;
+                    let statusClass = 'bg-gray-700/20 border-l-4 border-gray-500';
+                    if (pedido.statusNFFiscal === 'Entregue') statusClass = 'bg-green-900/20 border-l-4 border-green-500';
+                    else if (vencimentoDate) {
+                        if (vencimentoDate < today) statusClass = 'bg-red-900/20 border-l-4 border-red-500 pulse-alert-red';
+                        else if (vencimentoDate.getTime() - today.getTime() <= 7 * 24 * 60 * 60 * 1000) statusClass = 'bg-yellow-900/20 border-l-4 border-yellow-500';
+                        else statusClass = 'bg-blue-900/20 border-l-4 border-blue-500';
+                    }
+                    row.className = `transition-colors duration-300 ${statusClass}`;
+                    row.innerHTML = `
+                        <td class="p-3 whitespace-nowrap">${pedido.numeroPedido}</td><td class="p-3 whitespace-nowrap">${pedido.fornecedor}</td>
+                        <td class="p-3 whitespace-nowrap">${pedido.nomeColaborador || ''}</td><td class="p-3 whitespace-nowrap">${formatCurrency(pedido.valorTotal)}</td>
+                        <td class="p-3 whitespace-nowrap">${pedido.numeroNotaFiscal || '---'}</td><td class="p-3 whitespace-nowrap">${formatDate(pedido.dataVencimento)}</td>
+                        <td class="p-3 whitespace-nowrap"><span class="px-2 py-1 text-xs font-semibold rounded-full">${pedido.statusNFFiscal}</span></td>
+                        <td class="p-3 whitespace-nowrap"><div class="flex gap-2">
+                        ${pedido.statusNFFiscal === 'A Entregar' ? `<button data-id="${pedido.id}" class="btn-marcar-entregue btn-sm btn-secondary p-2">Entregue</button>` : ''}
+                        <button data-id="${pedido.id}" class="btn-edit-pedido btn-sm btn-warning p-2">Editar</button></div></td>`;
+                });
+                elements.pedidosTableBody.querySelectorAll('.btn-marcar-entregue').forEach(b => b.onclick = (e) => marcarComoEntregue(e.currentTarget.dataset.id));
+                elements.pedidosTableBody.querySelectorAll('.btn-edit-pedido').forEach(b => b.onclick = (e) => openEditModal(e.currentTarget.dataset.id));
+            };
+
+            const renderDashboardLists = () => {
+                let lists = { pertoVencimento: [], atrasados: [], pendentesNF: [] };
+                const today = new Date(); today.setHours(0,0,0,0);
+                const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                pedidos.forEach(p => {
+                    if (!p.numeroNotaFiscal && new Date(p.createdAt) < thirtyDaysAgo) lists.pendentesNF.push(p);
+                    if (p.statusNFFiscal === 'Entregue' || !p.dataVencimento) return;
+                    const vencimento = new Date(p.dataVencimento + 'T00:00:00');
+                    if (vencimento < today) lists.atrasados.push(p);
+                    else if (vencimento.getTime() - today.getTime() <= 7*24*60*60*1000) lists.pertoVencimento.push(p);
+                });
+                
+                const renderList = (el, list, noMsgEl, itemRenderer) => {
+                    el.innerHTML = '';
+                    noMsgEl.classList.toggle('hidden', list.length > 0);
+                    list.forEach(item => el.innerHTML += itemRenderer(item));
+                };
+
+                renderList(elements.listAtrasados, lists.atrasados, elements.noAtrasadosMessage, pedido => {
+                    const diasAtraso = Math.floor((today - new Date(pedido.dataVencimento + 'T00:00:00')) / 86400000);
+                    return `<li class="pulse-alert-red flex items-center justify-between gap-4 p-3 rounded-lg bg-red-900/50 border-l-4 border-red-500 hover:bg-red-900/70 transition-all duration-300">
+                        <div><p class="font-bold text-white">Pedido: ${pedido.numeroPedido}</p><p class="text-sm text-red-300">${pedido.fornecedor}</p></div>
+                        <div class="text-center"><p class="font-bold text-2xl text-red-300">${diasAtraso}</p><p class="text-xs text-red-400">dias</p></div>
+                        <button data-id="${pedido.id}" class="btn-resolver-atraso btn btn-danger px-4 py-2">Resolver</button></li>`;
+                });
+                elements.listAtrasados.querySelectorAll('.btn-resolver-atraso').forEach(b => b.onclick = (e) => openEditModal(e.currentTarget.dataset.id));
+
+                renderList(elements.listPertoVencimento, lists.pertoVencimento, elements.noPertoVencimentoMessage, p => `<li class="mb-2 p-2 bg-yellow-900/30 rounded-lg border-l-4 border-yellow-500 flex items-center gap-2">${warningIconSVG} <strong>${p.numeroPedido}</strong> - ${p.fornecedor} (Vence: ${formatDate(p.dataVencimento)})</li>`);
+
+                renderList(elements.listPendentesNF, lists.pendentesNF, elements.noPendentesNFMessage, pedido => `
+                    <li class="flex items-center justify-between gap-4 p-3 rounded-lg bg-purple-900/30 border-l-4 border-purple-500 hover:bg-purple-900/50">
+                        <div><p class="font-bold text-white">Pedido: ${pedido.numeroPedido}</p><p class="text-sm text-purple-300">${pedido.fornecedor}</p></div>
+                        <button data-id="${pedido.id}" class="btn-adicionar-nf btn-sm btn-warning p-2">Adicionar NF</button></li>`);
+                elements.listPendentesNF.querySelectorAll('.btn-adicionar-nf').forEach(b => b.onclick = (e) => openEditModal(e.currentTarget.dataset.id));
+            };
+
+            const renderAcompanhamento = () => {
+                const container = elements.acompanhamentoContainer;
+                container.innerHTML = '';
+                const selectedColaborador = elements.colaboradorFilterSelect.value;
+                const pedidosPendentes = pedidos.filter(p => p.statusNFFiscal !== 'Entregue');
+                let allGrouped = pedidosPendentes.reduce((acc, pedido) => {
+                    const colaborador = pedido.nomeColaborador || 'Não Atribuído';
+                    if (!acc[colaborador]) acc[colaborador] = { atrasados: [], pertoVencimento: [], dentroPrazo: [] };
+                    const today = new Date(); today.setHours(0,0,0,0);
+                    const vencimentoDate = pedido.dataVencimento ? new Date(pedido.dataVencimento + 'T00:00:00') : null;
+                    if (vencimentoDate) {
+                        if (vencimentoDate < today) acc[colaborador].atrasados.push(pedido);
+                        else if (vencimentoDate.getTime() - today.getTime() <= 7 * 24 * 60 * 60 * 1000) acc[colaborador].pertoVencimento.push(pedido);
+                        else acc[colaborador].dentroPrazo.push(pedido);
+                    } else acc[colaborador].dentroPrazo.push(pedido);
+                    return acc;
+                }, {});
+
+                let groupedByColaborador = (selectedColaborador && selectedColaborador !== 'all') ? (allGrouped[selectedColaborador] ? {[selectedColaborador]: allGrouped[selectedColaborador]} : {}) : allGrouped;
+                elements.noAcompanhamentoMessage.classList.toggle('hidden', Object.keys(groupedByColaborador).length > 0);
+
+                for (const colaborador in groupedByColaborador) {
+                    const painelColaborador = document.createElement('div');
+                    painelColaborador.className = 'bg-dark-primary/50 rounded-lg p-4';
+                    const { atrasados, pertoVencimento, dentroPrazo } = groupedByColaborador[colaborador];
+                    const createColumn = (title, pedidos, color, isAlert) => {
+                        const cardsHTML = pedidos.map((pedido, index) => `
+                            <div class="kanban-card p-3 rounded-lg bg-${color}-900/30 border-l-4 border-${color}-500 mb-3 cursor-pointer hover:scale-105 transition-transform ${isAlert ? 'pulse-alert-red' : ''}" data-id="${pedido.id}" style="animation-delay: ${index * 50}ms">
+                                <p class="font-bold text-white flex items-center gap-2">${color === 'yellow' ? warningIconSVG : ''} ${pedido.numeroPedido}</p>
+                                <p class="text-sm text-gray-300">${pedido.fornecedor}</p>
+                                <p class="text-xs mt-2 text-${color}-300">${formatDate(pedido.dataVencimento)}</p>
+                            </div>`).join('');
+                        return `<div class="flex-1"><h4 class="text-lg font-semibold text-${color}-400 mb-3 px-1">${title} (${pedidos.length})</h4>
+                                <div class="p-2 rounded-lg min-h-[10rem]">${cardsHTML || `<p class="text-center text-sm text-gray-500 mt-4">Nenhum pedido.</p>`}</div></div>`;
+                    };
+                    painelColaborador.innerHTML = `<h3 class="text-2xl font-bold text-white mb-4 border-b-2 border-blue-500 pb-2">${colaborador}</h3>
+                        <div class="flex flex-col md:flex-row gap-4">
+                            ${createColumn('Atrasados', atrasados, 'red', true)}
+                            ${createColumn('Perto do Venc.', pertoVencimento, 'yellow', false)}
+                            ${createColumn('Dentro do Prazo', dentroPrazo, 'blue', false)}</div>`;
+                    container.appendChild(painelColaborador);
+                }
+                container.querySelectorAll('.kanban-card').forEach(card => card.onclick = () => openEditModal(card.dataset.id));
+            };
+
+            const updateAllUI = () => {
+                let counts = { atrasados: 0, pertoVencimento: 0, dentroPrazo: 0, entregues: 0, semNF: 0 };
+                const today = new Date(); today.setHours(0,0,0,0);
+                pedidos.forEach(p => {
+                    if (!p.numeroNotaFiscal) counts.semNF++;
+                    if (p.statusNFFiscal === 'Entregue') { counts.entregues++; return; }
+                    if (!p.dataVencimento) { counts.dentroPrazo++; return; }
+                    const vencimento = new Date(p.dataVencimento + 'T00:00:00');
+                    if (vencimento < today) counts.atrasados++;
+                    else if (vencimento.getTime() - today.getTime() <= 7*24*60*60*1000) counts.pertoVencimento++;
+                    else counts.dentroPrazo++;
+                });
+                elements.countAtrasados.textContent = counts.atrasados;
+                elements.countPertoVencimento.textContent = counts.pertoVencimento;
+                elements.countDentroPrazo.textContent = counts.dentroPrazo;
+                elements.countEntregues.textContent = counts.entregues;
+                elements.countSemNF.textContent = counts.semNF;
+                elements.kpiAtrasados.classList.toggle('pulse-alert-red', counts.atrasados > 0);
+                
+                renderPedidosTable();
+                renderDashboardLists();
+                renderAcompanhamento();
+            };
+
+            const populateSelects = () => {
+                elements.fornecedoresDatalist.innerHTML = fornecedores.map(f => `<option value="${f.nome}"></option>`).join('');
+                elements.nomeColaboradorSelect.innerHTML = '<option value="">Selecione</option>' + colaboradores.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+                const filterSelect = elements.colaboradorFilterSelect;
+                const currentValue = filterSelect.value;
+                filterSelect.innerHTML = '<option value="all">Todos</option>' + colaboradores.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+                filterSelect.value = currentValue || 'all';
+            };
+
+            const handleOrderSubmit = async () => {
+                const btn = elements.submitOrderButton, btnText = btn.querySelector('.btn-text'), spinner = btn.querySelector('.spinner');
+                btn.disabled = true; spinner.classList.remove('hidden'); btnText.classList.add('hidden');
+
+                const valorTotalValue = elements.valorTotalInput.value;
+                const pedidoData = {
+                    numeroPedido: elements.numeroPedidoInput.value.trim(), fornecedor: elements.fornecedorInputList.value.trim(), nomeColaborador: elements.nomeColaboradorSelect.value,
+                    descricaoPedido: elements.descricaoPedidoInput.value.trim(), valorTotal: parseFloat(valorTotalValue), dataVencimento: elements.dataVencimentoInput.value,
+                    numeroNotaFiscal: elements.numeroNotaFiscalInput.value.trim(), dataEmissaoNF: elements.dataEmissaoNFInput.value, observacoes: elements.observacoesInput.value.trim(),
+                    createdAt: currentEditingPedidoId ? pedidos.find(p=>p.id===currentEditingPedidoId).createdAt : new Date().toISOString(),
+                    statusNFFiscal: currentEditingPedidoId ? pedidos.find(p=>p.id===currentEditingPedidoId).statusNFFiscal : 'A Entregar',
+                    dataEntregaFiscal: currentEditingPedidoId ? pedidos.find(p=>p.id===currentEditingPedidoId).dataEntregaFiscal : null,
+                };
+
+                const resetSubmitButton = () => { btn.disabled = false; spinner.classList.add('hidden'); btnText.classList.remove('hidden'); };
+                if (!pedidoData.numeroPedido || !pedidoData.fornecedor || !pedidoData.nomeColaborador || !pedidoData.descricaoPedido || !valorTotalValue) {
+                    showMessage('Preencha os campos obrigatórios (Pedido, Fornecedor, Colaborador, Descrição, Valor).', 'error', elements.messageBoxNewOrderModal);
+                    resetSubmitButton(); return;
+                }
+                if (isNaN(pedidoData.valorTotal)) { showMessage('O Valor Total deve ser um número válido.', 'error', elements.messageBoxNewOrderModal); resetSubmitButton(); return; }
+                if (!fornecedores.map(f => f.nome).includes(pedidoData.fornecedor)) { showMessage('Fornecedor não cadastrado.', 'error', elements.messageBoxNewOrderModal); resetSubmitButton(); return; }
+                if (pedidos.some(p => p.numeroPedido === pedidoData.numeroPedido && p.id !== currentEditingPedidoId)) { showMessage(`Pedido com número "${pedidoData.numeroPedido}" já existe.`, 'error', elements.messageBoxNewOrderModal); resetSubmitButton(); return; }
+
+                try {
+                    playSound('success');
+                    if (currentEditingPedidoId) {
+                        await setDoc(doc(db, `pedidos`, currentEditingPedidoId), pedidoData);
+                        showGlobalMessage('Pedido atualizado com sucesso!', 'success');
+                    } else {
+                        await addDoc(collection(db, `pedidos`), pedidoData);
+                        showGlobalMessage('Pedido lançado com sucesso!', 'success');
+                    }
+                    closeModal(elements.newOrderModal);
+                    clearOrderForm();
+                } catch (error) { console.error("Erro ao submeter pedido:", error); showMessage('Erro ao salvar o pedido.', 'error', elements.messageBoxNewOrderModal); } 
+                finally { resetSubmitButton(); }
+            };
+
+            const openEditModal = (pedidoId) => {
+                const pedido = pedidos.find(p => p.id === pedidoId); if (!pedido) return;
+                currentEditingPedidoId = pedido.id;
+                elements.editingPedidoIdInput.value = pedido.id;
+                elements.numeroPedidoInput.value = pedido.numeroPedido; elements.fornecedorInputList.value = pedido.fornecedor;
+                elements.nomeColaboradorSelect.value = pedido.nomeColaborador; elements.descricaoPedidoInput.value = pedido.descricaoPedido;
+                elements.valorTotalInput.value = pedido.valorTotal; elements.numeroNotaFiscalInput.value = pedido.numeroNotaFiscal || '';
+                elements.dataEmissaoNFInput.value = pedido.dataEmissaoNF || ''; elements.dataVencimentoInput.value = pedido.dataVencimento;
+                elements.observacoesInput.value = pedido.observacoes || '';
+                elements.newOrderModalTitle.textContent = 'Editar Pedido';
+                elements.submitOrderButton.querySelector('.btn-text').textContent = 'Salvar Edição';
+                openModal(elements.newOrderModal);
+            };
+
+            const marcarComoEntregue = async (pedidoId) => {
+                playSound('success');
+                try {
+                    await updateDoc(doc(db, `pedidos`, pedidoId), { statusNFFiscal: 'Entregue', dataEntregaFiscal: new Date().toISOString().split('T')[0] });
+                    showGlobalMessage('Pedido marcado como Entregue.', 'success');
+                } catch (error) { console.error("Erro ao marcar como entregue:", error); showGlobalMessage('Falha ao atualizar pedido.', 'error'); }
+            };
+            
+            const createItemDeleter = (listName, collectionName, inUseCheck) => async (id) => {
+                const currentList = collectionName === 'fornecedores' ? fornecedores : colaboradores;
+                const item = currentList.find(i => i.id === id);
+                if (!item) return;
+
+                if (inUseCheck(item.nome)) {
+                    playSound('error');
+                    showGlobalMessage(`Não é possível excluir: ${listName} "${item.nome}" está em uso por um ou mais pedidos.`, 'error');
+                    return; 
+                }
+                
+                const confirmModal = document.createElement('div');
+                confirmModal.className = 'modal flex justify-center items-center';
+                confirmModal.innerHTML = `<div class="modal-content w-full max-w-sm"><h3 class="text-xl text-white mb-4">Confirmar Exclusão</h3><p class="text-gray-400 mb-6">Tem certeza que deseja excluir "${item.nome}"?</p><div class="flex justify-end gap-4"><button id="cancelDelete" class="btn btn-secondary">Cancelar</button><button id="confirmDelete" class="btn btn-danger">Excluir</button></div></div>`;
+                document.body.appendChild(confirmModal);
+
+                document.getElementById('confirmDelete').onclick = async () => {
+                    playSound('error');
+                    try {
+                        const firestorePath = `metadata/${collectionName}`;
+                        await setDoc(doc(db, firestorePath), { items: currentList.filter(i => i.id !== id) });
+                        showGlobalMessage(`${listName} excluído.`, 'success');
+                    } catch (error) { showGlobalMessage(`Erro ao excluir ${listName}.`, 'error'); }
+                    finally { document.body.removeChild(confirmModal); }
+                };
+                document.getElementById('cancelDelete').onclick = () => { playSound('close'); document.body.removeChild(confirmModal); };
+            };
+
+            const excluirFornecedor = createItemDeleter('Fornecedor', 'fornecedores', name => pedidos.some(p => p.fornecedor === name));
+            const excluirColaborador = createItemDeleter('Colaborador', 'colaboradores', name => pedidos.some(p => p.nomeColaborador === name));
+
+            const renderCadastroTables = () => {
+                const renderTable = (tbody, data, noMsgEl, deleteHandler) => {
+                    tbody.innerHTML = '';
+                    noMsgEl.classList.toggle('hidden', data.length > 0);
+                    data.forEach(item => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `<td class="p-3">${item.nome}</td>
+                                         <td class="p-3">${item.email || '---'}</td>
+                                         <td class="p-3 text-right"><button data-id="${item.id}" class="btn-delete btn-sm btn-danger p-2">Excluir</button></td>`;
+                    });
+                    tbody.querySelectorAll('.btn-delete').forEach(b => b.onclick = () => deleteHandler(b.dataset.id));
+                };
+                renderTable(elements.fornecedoresTableBody, fornecedores, elements.noFornecedoresMessage, excluirFornecedor);
+                renderTable(elements.colaboradoresTableBody, colaboradores, elements.noColaboradoresMessage, excluirColaborador);
+            };
+
+            const addItem = async (itemName, list, messageBoxEl, collectionName, ...fields) => {
+                const newItem = { id: crypto.randomUUID() };
+                for (const field of fields) {
+                    const { input, name, required } = field;
+                    const value = input.value.trim();
+                    if (required && !value) {
+                        showMessage(`O campo ${name.toLowerCase()} não pode ser vazio.`, 'error', messageBoxEl);
+                        return;
+                    }
+                    newItem[name] = value;
+                }
+
+                if (list.some(i => i.nome.toLowerCase() === newItem.nome.toLowerCase())) { 
+                    showMessage(`${itemName} já cadastrado.`, 'warning', messageBoxEl); 
+                    return; 
+                }
+
+                try {
+                    playSound('success');
+                    const firestorePath = `metadata/${collectionName}`;
+                    await setDoc(doc(db, firestorePath), { items: [...list, newItem] });
+                    fields.forEach(f => f.input.value = '');
+                    showMessage(`${itemName} adicionado!`, 'success', messageBoxEl);
+                    setTimeout(() => closeModal(fields[0].input.closest('.modal')), 1000);
+                } catch (error) { 
+                    showMessage(`Erro ao adicionar ${itemName}.`, 'error', messageBoxEl); 
+                }
+            };
+            
+            const exportToCSV = () => {
+                playSound('click');
+                const headers = ["Numero Pedido", "Fornecedor", "Colaborador", "Descricao", "Valor Total", "Data Vencimento", "Status NF", "Numero NF", "Data Emissao NF", "Observacoes"];
+                const dataToExport = pedidos.map(p => ({
+                    numeroPedido: p.numeroPedido||'', fornecedor: p.fornecedor||'', nomeColaborador: p.nomeColaborador||'', descricaoPedido: p.descricaoPedido||'',
+                    valorTotal: p.valorTotal||0, dataVencimento: p.dataVencimento||'', statusNFFiscal: p.statusNFFiscal||'',
+                    numeroNotaFiscal: p.numeroNotaFiscal||'', dataEmissaoNF: p.dataEmissaoNF||'', observacoes: p.observacoes||''
+                }));
+                const replacer = (value) => String(value).replace(/"/g, '""');
+                const csv = [ headers.join(','), ...dataToExport.map(row => headers.map(h => `"${replacer(row[h.charAt(0).toLowerCase() + h.slice(1).replace(/\s/g, '')])}"`).join(',')) ].join('\r\n');
+                const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", "pedidos.csv");
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const showKpiDetails = (title, pedidosFiltrados) => {
+                const { kpiDetailsModal, kpiDetailsModalTitle, kpiDetailsModalList, kpiDetailsModalEmpty } = elements;
+                
+                kpiDetailsModalTitle.textContent = title;
+
+                if (pedidosFiltrados.length === 0) {
+                    kpiDetailsModalList.innerHTML = '';
+                    kpiDetailsModalList.classList.add('hidden');
+                    kpiDetailsModalEmpty.classList.remove('hidden');
+                } else {
+                    const groupedByColaborador = pedidosFiltrados.reduce((acc, pedido) => {
+                        const colaborador = pedido.nomeColaborador || 'Não Atribuído';
+                        if (!acc[colaborador]) {
+                            acc[colaborador] = [];
+                        }
+                        acc[colaborador].push(pedido);
+                        return acc;
+                    }, {});
+
+                    let content = '';
+                    for (const colaborador in groupedByColaborador) {
+                        content += `<h3 class="text-xl font-semibold text-accent-blue mt-4 first:mt-0">${colaborador}</h3>`;
+                        content += '<ul class="list-disc list-inside space-y-2 pl-4">';
+                        groupedByColaborador[colaborador].forEach(p => {
+                            content += `<li class="text-gray-300">Pedido <strong class="text-white">${p.numeroPedido}</strong> - ${p.fornecedor} (Vence: ${formatDate(p.dataVencimento)})</li>`;
+                        });
+                        content += '</ul>';
+                    }
+                    kpiDetailsModalList.innerHTML = content;
+                    kpiDetailsModalList.classList.remove('hidden');
+                    kpiDetailsModalEmpty.classList.add('hidden');
+                }
+                
+                openModal(kpiDetailsModal);
+            };
+
+            const setupListeners = () => {
+                onSnapshot(collection(db, "pedidos"), (snapshot) => { 
+                    pedidos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+                    updateAllUI();
+                });
+                onSnapshot(doc(db, "metadata", "fornecedores"), (docSnapshot) => { 
+                    fornecedores = docSnapshot.exists() ? docSnapshot.data().items || [] : []; 
+                    populateSelects();
+                    renderCadastroTables();
+                });
+                onSnapshot(doc(db, "metadata", "colaboradores"), (docSnapshot) => { 
+                    colaboradores = docSnapshot.exists() ? docSnapshot.data().items || [] : []; 
+                    populateSelects();
+                    renderCadastroTables();
+                    renderAcompanhamento();
+                });
+                elements.loadingOverlay.classList.add('hidden');
+            };
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) { 
+                    userId = user.uid; 
+                    elements.userIdDisplay.textContent = `User ID: ${userId}`; 
+                    elements.userIdDisplay.classList.remove('hidden');
+                    setupListeners();
+                } else { 
+                    try {
+                        await signInAnonymously(auth); 
+                    } catch (error) {
+                        console.error("Erro de autenticação anônima:", error); 
+                        elements.loadingOverlay.classList.add('hidden'); 
+                    }
+                }
+            });
+
+            const showTab = (tabId) => {
+                playSound('tab');
+                const currentActiveTab = document.querySelector('.tab-content.active');
+                if (currentActiveTab) {
+                    currentActiveTab.classList.add('exiting');
+                    currentActiveTab.addEventListener('animationend', () => {
+                        currentActiveTab.classList.remove('active', 'exiting');
+                        const nextTab = document.getElementById(`content${tabId}`);
+                        if (nextTab) nextTab.classList.add('active');
+                        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                        document.querySelector(`.tab-button[data-tab="${tabId}"]`).classList.add('active');
+                    }, { once: true });
+                }
+            };
+
+            const handleLastVisit = () => {
+                const lastVisitEl = elements.lastVisitDisplay;
+                const lastVisitTimestamp = localStorage.getItem('lastVisitTimestamp');
+
+                if (lastVisitTimestamp) {
+                    lastVisitEl.textContent = `Última visita em: ${lastVisitTimestamp}`;
+                } else {
+                    lastVisitEl.textContent = 'Bem-vindo(a)! Esta é sua primeira visita.';
+                }
+
+                const now = new Date();
+                const formattedTimestamp = now.toLocaleString('pt-BR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+                localStorage.setItem('lastVisitTimestamp', formattedTimestamp);
+            };
+            handleLastVisit();
+
+            document.querySelectorAll('.tab-button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+            elements.fabAddOrder.onclick = () => { clearOrderForm(); openModal(elements.newOrderModal); };
+            elements.addOrderBtnPedidosTab.onclick = () => { clearOrderForm(); openModal(elements.newOrderModal); };
+            elements.closeNewOrderModalButton.onclick = () => closeModal(elements.newOrderModal);
+            elements.submitOrderButton.onclick = handleOrderSubmit;
+            elements.openFornecedorModalBtn.onclick = () => openModal(elements.newFornecedorModal);
+            elements.closeFornecedorModal.onclick = () => closeModal(elements.newFornecedorModal);
+            elements.btnAdicionarFornecedor.onclick = () => addItem('Fornecedor', fornecedores, elements.messageBoxFornecedores, 'fornecedores', {input: elements.modalFornecedorNomeInput, name: 'nome', required: true});
+            elements.openColaboradorModalBtn.onclick = () => openModal(elements.newColaboradorModal);
+            elements.closeColaboradorModal.onclick = () => closeModal(elements.newColaboradorModal);
+            elements.btnAdicionarColaborador.onclick = () => addItem('Colaborador', colaboradores, elements.messageBoxColaboradores, 'colaboradores', 
+                {input: elements.modalColaboradorNomeInput, name: 'nome', required: true}, 
+                {input: elements.modalColaboradorEmailInput, name: 'email', required: false}
+            );
+            elements.searchPedidoInput.onkeyup = renderPedidosTable;
+            elements.colaboradorFilterSelect.onchange = renderAcompanhamento;
+            elements.exportCsvBtn.onclick = exportToCSV;
+            
+            elements.closeKpiDetailsModal.onclick = () => closeModal(elements.kpiDetailsModal);
+            elements.kpiAtrasados.onclick = () => {
+                const today = new Date(); today.setHours(0,0,0,0);
+                const atrasados = pedidos.filter(p => p.statusNFFiscal !== 'Entregue' && p.dataVencimento && new Date(p.dataVencimento + 'T00:00:00') < today);
+                showKpiDetails('Pedidos Atrasados', atrasados);
+            };
+            elements.kpiPertoVencimento.onclick = () => {
+                const today = new Date(); today.setHours(0,0,0,0);
+                const pertoVencimento = pedidos.filter(p => p.statusNFFiscal !== 'Entregue' && p.dataVencimento && new Date(p.dataVencimento + 'T00:00:00').getTime() - today.getTime() <= 7 * 24 * 60 * 60 * 1000 && new Date(p.dataVencimento + 'T00:00:00') >= today);
+                showKpiDetails('Pedidos Perto do Vencimento', pertoVencimento);
+            };
+            elements.kpiSemNF.onclick = () => {
+                const semNF = pedidos.filter(p => !p.numeroNotaFiscal);
+                showKpiDetails('Pedidos Sem Nota Fiscal', semNF);
+            };
+
+            window.addEventListener('online', () => elements.offlineIndicator.classList.remove('visible'));
+            window.addEventListener('offline', () => elements.offlineIndicator.classList.add('visible'));
+            if (!navigator.onLine) elements.offlineIndicator.classList.add('visible');
+        });
+
+    </script>
+</body>
+</html>
