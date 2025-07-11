@@ -1,0 +1,8 @@
+{
+  "name": "funcoes-pedidos-fogas",
+  "version": "1.0.0",
+  "dependencies": {
+    "firebase-admin": "^11.11.1",
+    "nodemailer": "^6.9.5"
+  }
+}
