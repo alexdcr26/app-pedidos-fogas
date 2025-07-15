@@ -21,13 +21,15 @@
             --accent-blue: #00b8ff;
             --accent-yellow: #ffd700;
             --accent-purple: #9c27b0;
+            --accent-orange: #ff8c00;
         }
 
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-dark-primary);
             color: var(--text-light-primary);
-            overflow: hidden; /* Prevent scrollbars during animation */
+            overflow-y: auto; 
+            overflow-x: auto;
         }
 
         /* Custom scrollbar */
@@ -71,6 +73,7 @@
         .kpi-card.blue { --glow-color: var(--accent-blue); border-left: 4px solid var(--accent-blue); color: var(--accent-blue); }
         .kpi-card.green { --glow-color: var(--accent-green); border-left: 4px solid var(--accent-green); color: var(--accent-green); }
         .kpi-card.purple { --glow-color: var(--accent-purple); border-left: 4px solid var(--accent-purple); color: var(--accent-purple); }
+        .kpi-card.orange { --glow-color: var(--accent-orange); border-left: 4px solid var(--accent-orange); color: var(--accent-orange); }
 
         @keyframes rotate { 100% { transform: rotate(360deg); } }
         
@@ -229,9 +232,9 @@
 <body class="p-4 sm:p-6 md:p-8">
 
     <div id="offline-indicator">Você está offline. Os dados serão sincronizados.</div>
-    <div class="loading-overlay hidden" id="loadingOverlay">
+    <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
-        <p class="ml-4 text-lg">Processando...</p>
+        <p class="ml-4 text-lg">Carregando...</p>
     </div>
     <div id="globalMessage" class="global-message hidden"></div>
 
@@ -245,12 +248,16 @@
                 <div><label for="numeroPedido">Número do Pedido:</label><input type="text" id="numeroPedido" class="w-full p-2 mt-1"></div>
                 <div><label for="fornecedorInputList">Fornecedor:</label><input type="text" id="fornecedorInputList" list="fornecedoresList" class="w-full p-2 mt-1" placeholder="Digite ou selecione"><datalist id="fornecedoresList"></datalist></div>
                 <div><label for="nomeColaborador">Nome do Colaborador:</label><select id="nomeColaborador" class="w-full p-2 mt-1"></select></div>
-                <div class="md:col-span-2"><label for="descricaoPedido">Descrição do Pedido:</label><textarea id="descricaoPedido" rows="3" class="w-full p-2 mt-1"></textarea></div>
+                <div class="md:col-span-2"><label for="descricaoPedido">Descrição do Pedido/Serviço:</label><textarea id="descricaoPedido" rows="3" class="w-full p-2 mt-1"></textarea></div>
                 <div><label for="valorTotal">Valor Total (R$):</label><input type="number" id="valorTotal" step="0.01" class="w-full p-2 mt-1"></div>
                 <div><label for="dataVencimento">Data de Vencimento (Opcional):</label><input type="date" id="dataVencimento" class="w-full p-2 mt-1"></div>
                 <div><label for="numeroNotaFiscal">Nº Nota Fiscal (Opcional):</label><input type="text" id="numeroNotaFiscal" class="w-full p-2 mt-1"></div>
                 <div><label for="dataEmissaoNF">Emissão da NF (Opcional):</label><input type="date" id="dataEmissaoNF" class="w-full p-2 mt-1"></div>
                 <div class="md:col-span-2"><label for="observacoes">Observações:</label><textarea id="observacoes" rows="3" class="w-full p-2 mt-1"></textarea></div>
+                <div class="md:col-span-2 flex items-center gap-3">
+                    <input type="checkbox" id="isServiceOrder" class="h-5 w-5 rounded text-accent-orange focus:ring-accent-orange">
+                    <label for="isServiceOrder" class="text-white">Este é um pedido de serviço</label>
+                </div>
             </div>
             <button id="submitOrderButton" class="w-full btn btn-primary">
                 <span class="btn-text">Lançar Pedido</span>
@@ -279,8 +286,8 @@
                         <option value="Cancelada">Cancelada</option>
                     </select>
                 </div>
-                 <div><label for="criadorRequisicao">Criador (Colaborador):</label><select id="criadorRequisicao" class="w-full p-2 mt-1"></select></div>
-                 <div class="md:col-span-2"><label for="modalidadeTransporte">Modalidade de Transporte (Opcional):</label>
+                <div><label for="criadorRequisicao">Criador (Colaborador):</label><select id="criadorRequisicao" class="w-full p-2 mt-1"></select></div>
+                <div class="md:col-span-2"><label for="modalidadeTransporte">Modalidade de Transporte (Opcional):</label>
                     <select id="modalidadeTransporte" class="w-full p-2 mt-1">
                         <option value="">Selecione</option>
                         <option value="Aéreo">Aéreo</option>
@@ -344,27 +351,68 @@
             </div>
         </div>
     </div>
+    <div id="editServicoModal" class="modal hidden">
+        <div class="modal-content w-full max-w-2xl">
+            <button class="modal-close-button" id="closeEditServicoModal">&times;</button>
+            <h2 class="text-2xl font-semibold text-white mb-6">Editar Detalhes do Serviço</h2>
+            <input type="hidden" id="editingServicoId">
+            <div class="space-y-4">
+                <div>
+                    <label>Descrição do Serviço:</label>
+                    <p id="servicoDescricao" class="mt-1 p-2 bg-dark-primary/50 rounded-md text-gray-300"></p>
+                </div>
+                <div>
+                    <label for="servicoStatus">Status:</label>
+                    <select id="servicoStatus" class="w-full p-2 mt-1">
+                        <option value="A Iniciar">A Iniciar</option>
+                        <option value="Em Andamento">Em Andamento</option>
+                        <option value="Finalizado">Finalizado</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="servicoDataInicio">Data de Início:</label>
+                    <input type="datetime-local" id="servicoDataInicio" class="w-full p-2 mt-1">
+                </div>
+                <div>
+                    <label for="servicoDataFim">Data de Fim:</label>
+                    <input type="datetime-local" id="servicoDataFim" class="w-full p-2 mt-1">
+                </div>
+                <div>
+                    <label for="servicoMotivoAtraso">Motivo do Atraso (se houver):</label>
+                    <textarea id="servicoMotivoAtraso" rows="3" class="w-full p-2 mt-1"></textarea>
+                </div>
+            </div>
+            <button id="submitServicoEditButton" class="w-full btn mt-6" style="background-color: var(--accent-orange); color: var(--bg-dark-primary);">Salvar Alterações</button>
+        </div>
+    </div>
 
     <!-- Main Menu View -->
-    <div id="mainMenu" class="max-w-5xl mx-auto">
+    <div id="mainMenu" class="max-w-7xl mx-auto hidden">
         <div class="text-center mb-12">
             <img src="https://images.seeklogo.com/logo-png/40/2/fogas-logo-png_seeklogo-400101.png" alt="Logo FOGÁS" class="mx-auto mb-6 h-24" onerror="this.style.display='none'">
-            <h1 class="text-4xl sm:text-5xl font-bold text-white">Gestão de Pedidos e Requisições</h1>
+            <h1 class="text-4xl sm:text-5xl font-bold text-white">Gestão Integrada</h1>
             <p class="text-lg text-blue-300 tracking-widest mt-2">SETOR DE MANUTENÇÃO FOGÁS</p>
         </div>
         <div class="text-center mb-8">
             <p id="lastVisitDisplay" class="text-xs text-gray-500"></p>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div id="goToPedidos" class="menu-card rounded-xl p-8 cursor-pointer flex flex-col items-center justify-center text-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4 text-accent-green" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                 <h2 class="text-2xl font-bold text-white">Gestão de Pedidos</h2>
-                <p class="text-light-secondary mt-2">Controle de pedidos, fornecedores e acompanhamento de entregas.</p>
+                <p class="text-light-secondary mt-2">Controle de pedidos de compra, fornecedores e entregas.</p>
             </div>
             <div id="goToRequisicoes" class="menu-card rounded-xl p-8 cursor-pointer flex flex-col items-center justify-center text-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4 text-accent-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                 <h2 class="text-2xl font-bold text-white">Gestão de Requisições</h2>
                 <p class="text-light-secondary mt-2">Crie e gerencie requisições de compra internas.</p>
+            </div>
+            <div id="goToServicos" class="menu-card rounded-xl p-8 cursor-pointer flex flex-col items-center justify-center text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4 text-accent-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 00-1-1v-1a2 2 0 10-4 0v1a1 1 0 00-1 1H7a1 1 0 01-1-1v-3a1 1 0 011-1h1a2 2 0 100-4H7a1 1 0 01-1-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+                </svg>
+                <h2 class="text-2xl font-bold text-white">Gestão de Serviços</h2>
+                <p class="text-light-secondary mt-2">Acompanhe o início e o fim dos serviços contratados.</p>
             </div>
         </div>
          <p id="userIdDisplay" class="text-center text-sm text-gray-500 mt-12 hidden"></p>
@@ -425,9 +473,12 @@
             <div id="noPedidosMessage" class="text-center p-8 hidden">Nenhum pedido lançado ainda.</div>
         </div>
         <div id="contentAcompanhamento" class="tab-content">
-            <div class="mb-6 flex items-center">
-                <label for="colaboradorFilterSelect" class="mr-4 text-lg font-semibold text-gray-300">Visualizar:</label>
-                <select id="colaboradorFilterSelect" class="p-2 rounded-lg bg-dark-primary border-2 border-blue-500 text-white focus:outline-none focus:border-accent-green"></select>
+            <div class="flex flex-wrap items-center gap-4 mb-6">
+                <div class="flex items-center">
+                    <label for="colaboradorFilterSelect" class="mr-4 text-lg font-semibold text-gray-300">Visualizar:</label>
+                    <select id="colaboradorFilterSelect" class="p-2 rounded-lg bg-dark-primary border-2 border-blue-500 text-white focus:outline-none focus:border-accent-green"></select>
+                </div>
+                 <input type="text" id="searchAcompanhamentoPedidos" class="w-full max-w-xs p-2" placeholder="Pesquisar nos cartões...">
             </div>
             <div id="acompanhamentoContainer" class="space-y-8"></div>
             <p id="noAcompanhamentoMessage" class="text-center text-xl mt-8 hidden">Nenhum colaborador com pendências.</p>
@@ -436,11 +487,13 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
                     <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold text-white">Fornecedores</h2><button id="openFornecedorModalBtn" class="btn btn-primary">Novo</button></div>
+                    <input type="text" id="searchFornecedor" class="w-full p-2 mb-4" placeholder="Pesquisar Fornecedor...">
                     <div class="table-container"><table class="min-w-full"><thead><tr><th class="px-4 py-3 text-left text-xs font-medium uppercase">Nome</th><th class="px-4 py-3 text-left text-xs font-medium uppercase">Ações</th></tr></thead><tbody id="fornecedoresTableBody"></tbody></table></div>
                     <div id="noFornecedoresMessage" class="text-center p-8 hidden">Nenhum fornecedor cadastrado.</div>
                 </div>
                 <div>
                     <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold text-white">Colaboradores</h2><button id="openColaboradorModalBtn" class="btn btn-primary">Novo</button></div>
+                    <input type="text" id="searchColaborador" class="w-full p-2 mb-4" placeholder="Pesquisar Colaborador...">
                     <div class="table-container"><table class="min-w-full"><thead><tr>
                         <th class="px-4 py-3 text-left text-xs font-medium uppercase">Nome</th><th class="px-4 py-3 text-left text-xs font-medium uppercase">Email</th><th class="px-4 py-3 text-left text-xs font-medium uppercase">Ações</th>
                     </tr></thead><tbody id="colaboradoresTableBody"></tbody></table></div>
@@ -510,14 +563,18 @@
         </div>
 
         <div id="contentReqAcompanhamento" class="tab-content">
+             <input type="text" id="searchAcompanhamentoReq" class="w-full max-w-xs p-2 mb-6" placeholder="Pesquisar nos cartões...">
              <div id="reqAcompanhamentoContainer" class="space-y-8"></div>
              <p id="noReqAcompanhamentoMessage" class="text-center text-xl mt-8 hidden">Nenhum solicitante com pendências.</p>
         </div>
 
         <div id="contentReqCriador" class="tab-content">
-            <div class="mb-6 flex items-center">
-                <label for="criadorFilterSelect" class="mr-4 text-lg font-semibold text-gray-300">Visualizar Requisições de:</label>
-                <select id="criadorFilterSelect" class="p-2 rounded-lg bg-dark-primary border-2 border-blue-500 text-white focus:outline-none focus:border-accent-green"></select>
+            <div class="flex flex-wrap items-center gap-4 mb-6">
+                <div class="flex items-center">
+                    <label for="criadorFilterSelect" class="mr-4 text-lg font-semibold text-gray-300">Visualizar Requisições de:</label>
+                    <select id="criadorFilterSelect" class="p-2 rounded-lg bg-dark-primary border-2 border-blue-500 text-white focus:outline-none focus:border-accent-green"></select>
+                </div>
+                 <input type="text" id="searchCriadorReq" class="w-full max-w-xs p-2" placeholder="Pesquisar nos cartões...">
             </div>
              <div id="criadorRequisicoesContainer" class="space-y-8"></div>
              <p id="noCriadorRequisicoesMessage" class="text-center text-xl mt-8">Selecione um criador para ver suas requisições.</p>
@@ -526,9 +583,80 @@
         <div id="contentReqCadastros" class="tab-content">
              <div>
                 <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold text-white">Solicitantes</h2><button id="openSolicitanteModalBtn" class="btn btn-primary">Novo</button></div>
+                <input type="text" id="searchSolicitante" class="w-full p-2 mb-4" placeholder="Pesquisar Solicitante...">
                 <div class="table-container"><table class="min-w-full"><thead><tr><th class="px-4 py-3 text-left text-xs font-medium uppercase">Nome</th><th class="px-4 py-3 text-left text-xs font-medium uppercase">Ações</th></tr></thead><tbody id="solicitantesTableBody"></tbody></table></div>
                 <div id="noSolicitantesMessage" class="text-center p-8 hidden">Nenhum solicitante cadastrado.</div>
             </div>
+        </div>
+    </div>
+
+    <!-- Serviços View -->
+    <div id="servicosView" class="view-container max-w-7xl mx-auto shadow-lg rounded-xl p-6 sm:p-8 hidden" style="--accent-color: var(--accent-orange);">
+        <div class="flex items-center mb-6">
+            <button id="backToMenuFromServicos" class="btn mr-4" style="background-color: var(--accent-orange); color: var(--bg-dark-primary);">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                Menu
+            </button>
+            <h2 class="text-2xl font-bold text-white">Painel de Serviços</h2>
+        </div>
+        <div class="flex border-b border-gray-700 mb-6 overflow-x-auto">
+            <button data-serv-tab="Dashboard" class="tab-button active">Dashboard</button>
+            <button data-serv-tab="Lista" class="tab-button">Lista de Serviços</button>
+            <button data-serv-tab="Eficiencia" class="tab-button">Eficiência</button>
+        </div>
+
+        <div id="contentServDashboard" class="tab-content active">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="kpi-card yellow"><p class="title">A Iniciar</p><p id="countServAIniciar" class="value text-4xl">0</p></div>
+                <div class="kpi-card blue"><p class="title">Em Andamento</p><p id="countServEmAndamento" class="value text-4xl">0</p></div>
+                <div class="kpi-card green"><p class="title">Finalizados</p><p id="countServFinalizados" class="value text-4xl">0</p></div>
+                <div class="kpi-card red"><p class="title">Atrasados</p><p id="countServAtrasados" class="value text-4xl">0</p></div>
+            </div>
+            <div>
+                 <h3 class="text-xl font-semibold text-white mb-4">Serviços por Status</h3>
+                 <div id="servicosChartContainer" class="p-4 bg-dark-primary/50 rounded-lg">
+                    <!-- Gráfico será renderizado aqui -->
+                 </div>
+            </div>
+        </div>
+
+        <div id="contentServLista" class="tab-content">
+            <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                <input type="text" id="searchServico" class="w-full max-w-xs p-2" placeholder="Pesquisar por descrição...">
+            </div>
+            <div class="table-container">
+                <table class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium uppercase">Descrição do Serviço</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium uppercase">Status</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium uppercase">Data de Início</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium uppercase">Data de Fim</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium uppercase">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="servicosTableBody"></tbody>
+                </table>
+            </div>
+            <div id="noServicosMessage" class="text-center p-8 hidden">Nenhum serviço encontrado.</div>
+        </div>
+
+        <div id="contentServEficiencia" class="tab-content">
+            <h3 class="text-2xl font-semibold text-white mb-4">Eficiência de Fornecedores de Serviço</h3>
+            <div class="table-container">
+                <table class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium uppercase">Fornecedor</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium uppercase">Total de Serviços</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium uppercase">Serviços Finalizados</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium uppercase">Tempo Médio de Conclusão (Dias)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="supplierEfficiencyTableBody"></tbody>
+                </table>
+            </div>
+            <div id="noSupplierEfficiencyMessage" class="text-center p-8 hidden">Nenhum dado de eficiência para exibir.</div>
         </div>
     </div>
     
@@ -538,17 +666,12 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, addDoc, getDocs, enableIndexedDbPersistence, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-          apiKey: "AIzaSyCLriPUW86EBROvAbMTJw4M3u3g6Jjdanw",
-          authDomain: "app-pedidos-fogas.firebaseapp.com",
-          projectId: "app-pedidos-fogas",
-          storageBucket: "app-pedidos-fogas.appspot.com",
-          messagingSenderId: "1016768034666",
-          appId: "1:1016768034666:web:b5d9301436ed22cfc39713"
-        };
+        // --- INICIALIZAÇÃO DO FIREBASE ---
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -559,7 +682,8 @@
             else if (err.code == 'unimplemented') console.warn("Persistência offline não suportada neste navegador.");
         });
 
-        let pedidos = [], fornecedores = [], colaboradores = [], solicitantes = [], requisicoes = [], userId = null, currentEditingPedidoId = null, currentEditingRequisicaoId = null;
+        // Variáveis de estado globais
+        let pedidos = [], fornecedores = [], colaboradores = [], solicitantes = [], requisicoes = [], servicos = [], userId = null, currentEditingPedidoId = null, currentEditingRequisicaoId = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             const getEl = (id) => document.getElementById(id);
@@ -568,10 +692,13 @@
                 mainMenu: getEl('mainMenu'),
                 pedidosView: getEl('pedidosView'),
                 requisicoesView: getEl('requisicoesView'),
+                servicosView: getEl('servicosView'),
                 goToPedidosBtn: getEl('goToPedidos'),
                 goToRequisicoesBtn: getEl('goToRequisicoes'),
+                goToServicosBtn: getEl('goToServicos'),
                 backToMenuFromPedidosBtn: getEl('backToMenuFromPedidos'),
                 backToMenuFromRequisicoesBtn: getEl('backToMenuFromRequisicoes'),
+                backToMenuFromServicosBtn: getEl('backToMenuFromServicos'),
 
                 loadingOverlay: getEl('loadingOverlay'), globalMessage: getEl('globalMessage'),
                 // Pedidos
@@ -582,7 +709,9 @@
                 numeroNotaFiscalInput: getEl('numeroNotaFiscal'), dataEmissaoNFInput: getEl('dataEmissaoNF'), dataVencimentoInput: getEl('dataVencimento'),
                 observacoesInput: getEl('observacoes'), pedidosTableBody: getEl('pedidosTableBody'), noPedidosMessage: getEl('noPedidosMessage'),
                 searchPedidoInput: getEl('searchPedido'), addOrderBtnPedidosTab: getEl('addOrderBtnPedidosTab'),
-                
+                searchAcompanhamentoPedidos: getEl('searchAcompanhamentoPedidos'),
+                isServiceOrderCheckbox: getEl('isServiceOrder'),
+
                 // Requisições
                 newRequisicaoModal: getEl('newRequisicaoModal'), newRequisicaoModalTitle: getEl('newRequisicaoModalTitle'),
                 closeNewRequisicaoModal: getEl('closeNewRequisicaoModal'), submitRequisicaoButton: getEl('submitRequisicaoButton'),
@@ -601,24 +730,50 @@
                 kpiReqEmAndamento: getEl('kpiReqEmAndamento'), countReqEmAndamento: getEl('countReqEmAndamento'),
                 kpiReqEntregues: getEl('kpiReqEntregues'), countReqEntregues: getEl('countReqEntregues'),
                 reqAcompanhamentoContainer: getEl('reqAcompanhamentoContainer'), noReqAcompanhamentoMessage: getEl('noReqAcompanhamentoMessage'),
+                searchAcompanhamentoReq: getEl('searchAcompanhamentoReq'),
                 criadorFilterSelect: getEl('criadorFilterSelect'),
+                searchCriadorReq: getEl('searchCriadorReq'),
                 criadorRequisicoesContainer: getEl('criadorRequisicoesContainer'),
                 noCriadorRequisicoesMessage: getEl('noCriadorRequisicoesMessage'),
+
+                 // Serviços
+                servicosTableBody: getEl('servicosTableBody'),
+                noServicosMessage: getEl('noServicosMessage'),
+                searchServicoInput: getEl('searchServico'),
+                countServAIniciar: getEl('countServAIniciar'),
+                countServEmAndamento: getEl('countServEmAndamento'),
+                countServFinalizados: getEl('countServFinalizados'),
+                countServAtrasados: getEl('countServAtrasados'),
+                servicosChartContainer: getEl('servicosChartContainer'),
+                editServicoModal: getEl('editServicoModal'),
+                closeEditServicoModal: getEl('closeEditServicoModal'),
+                editingServicoId: getEl('editingServicoId'),
+                servicoDescricao: getEl('servicoDescricao'),
+                servicoStatus: getEl('servicoStatus'),
+                servicoDataInicio: getEl('servicoDataInicio'),
+                servicoDataFim: getEl('servicoDataFim'),
+                servicoMotivoAtraso: getEl('servicoMotivoAtraso'),
+                submitServicoEditButton: getEl('submitServicoEditButton'),
+                supplierEfficiencyTableBody: getEl('supplierEfficiencyTableBody'),
+                noSupplierEfficiencyMessage: getEl('noSupplierEfficiencyMessage'),
 
                 // Cadastros
                 newFornecedorModal: getEl('newFornecedorModal'), closeFornecedorModal: getEl('closeFornecedorModal'), openFornecedorModalBtn: getEl('openFornecedorModalBtn'),
                 modalFornecedorNomeInput: getEl('modalFornecedorNome'), btnAdicionarFornecedor: getEl('btnAdicionarFornecedor'),
                 fornecedoresTableBody: getEl('fornecedoresTableBody'), messageBoxFornecedores: getEl('messageBoxFornecedores'), noFornecedoresMessage: getEl('noFornecedoresMessage'),
+                searchFornecedor: getEl('searchFornecedor'),
                 
                 newColaboradorModal: getEl('newColaboradorModal'), closeColaboradorModal: getEl('closeColaboradorModal'), openColaboradorModalBtn: getEl('openColaboradorModalBtn'),
                 modalColaboradorNomeInput: getEl('modalColaboradorNome'),
                 modalColaboradorEmailInput: getEl('modalColaboradorEmail'),
                 btnAdicionarColaborador: getEl('btnAdicionarColaborador'),
                 colaboradoresTableBody: getEl('colaboradoresTableBody'), messageBoxColaboradores: getEl('messageBoxColaboradores'), noColaboradoresMessage: getEl('noColaboradoresMessage'),
+                searchColaborador: getEl('searchColaborador'),
 
                 newSolicitanteModal: getEl('newSolicitanteModal'), closeSolicitanteModal: getEl('closeSolicitanteModal'), openSolicitanteModalBtn: getEl('openSolicitanteModalBtn'),
                 modalSolicitanteNomeInput: getEl('modalSolicitanteNome'), btnAdicionarSolicitante: getEl('btnAdicionarSolicitante'),
                 solicitantesTableBody: getEl('solicitantesTableBody'), messageBoxSolicitantes: getEl('messageBoxSolicitantes'), noSolicitantesMessage: getEl('noSolicitantesMessage'),
+                searchSolicitante: getEl('searchSolicitante'),
 
                 // Dashboard & Gerais
                 kpiAtrasados: getEl('kpiAtrasados'), kpiPertoVencimento: getEl('kpiPertoVencimento'), kpiDentroPrazo: getEl('kpiDentroPrazo'), kpiEntregues: getEl('kpiEntregues'), kpiSemNF: getEl('kpiSemNF'),
@@ -686,13 +841,22 @@
 
             const formatDate = (dateString) => {
                 if (!dateString) return '---';
-                const date = new Date(dateString + 'T00:00:00'); // Treat as local timezone
-                return date.toLocaleDateString('pt-BR');
+                const date = new Date(dateString); 
+                return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
             };
+
+            const toISOLocal = (date) => {
+                if (!date) return '';
+                const d = new Date(date);
+                const pad = (n) => `${Math.floor(Math.abs(n))}`.padStart(2, '0');
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            }
+
             const formatCurrency = (value) => parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             
             const clearOrderForm = () => {
                 elements.newOrderModal.querySelectorAll('input, select, textarea').forEach(el => el.value = '');
+                elements.isServiceOrderCheckbox.checked = false;
                 currentEditingPedidoId = null;
                 elements.editingPedidoIdInput.value = '';
                 elements.newOrderModalTitle.textContent = 'Novo Lançamento de Pedido';
@@ -722,21 +886,12 @@
 
             // --- NAVIGATION ---
             const showView = (viewName, isInitialLoad = false) => {
-                if (!isInitialLoad) {
-                    playSound('click');
-                }
+                if (!isInitialLoad) playSound('click');
 
-                const views = [elements.mainMenu, elements.pedidosView, elements.requisicoesView];
+                const views = [elements.mainMenu, elements.pedidosView, elements.requisicoesView, elements.servicosView];
                 const targetViewId = viewName === 'menu' ? 'mainMenu' : `${viewName}View`;
                 const targetView = getEl(targetViewId);
-                let currentView = null;
-
-                for (const view of views) {
-                    if (!view.classList.contains('hidden')) {
-                        currentView = view;
-                        break;
-                    }
-                }
+                let currentView = views.find(v => !v.classList.contains('hidden'));
 
                 if (isInitialLoad) {
                     views.forEach(v => v.classList.add('hidden'));
@@ -750,14 +905,226 @@
                         currentView.classList.add('hidden');
                         currentView.classList.remove('view-zooming-out');
                         targetView.classList.remove('view-zooming-in');
-                    }, 500); // Match animation duration
+                    }, 500);
                 }
                 
-                // Manage FABs
                 elements.fabAddOrder.classList.toggle('hidden', viewName !== 'pedidos');
                 elements.fabAddRequisicao.classList.toggle('hidden', viewName !== 'requisicoes');
             };
             
+            // --- SERVIÇOS ---
+            const renderServicosTable = () => {
+                const tbody = elements.servicosTableBody;
+                tbody.innerHTML = '';
+                const searchTerm = elements.searchServicoInput.value.toLowerCase();
+                const filteredServicos = servicos
+                    .filter(s => s.descricao.toLowerCase().includes(searchTerm))
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                elements.noServicosMessage.classList.toggle('hidden', filteredServicos.length > 0);
+
+                filteredServicos.forEach(servico => {
+                    const row = tbody.insertRow();
+                    let statusClass = '';
+                    let statusText = '';
+                    const isAtrasado = servico.status === 'Em Andamento' && servico.dataFim && new Date() > new Date(servico.dataFim);
+
+                    switch(servico.status) {
+                        case 'A Iniciar': statusClass = 'text-yellow-400'; statusText = 'A Iniciar'; break;
+                        case 'Em Andamento': statusClass = isAtrasado ? 'text-red-400 animate-pulse' : 'text-blue-400'; statusText = isAtrasado ? 'Atrasado' : 'Em Andamento'; break;
+                        case 'Finalizado': statusClass = 'text-green-400'; statusText = 'Finalizado'; break;
+                    }
+
+                    row.innerHTML = `
+                        <td class="p-3 whitespace-nowrap">${servico.descricao}</td>
+                        <td class="p-3 whitespace-nowrap font-bold ${statusClass}">${statusText}</td>
+                        <td class="p-3 whitespace-nowrap">${servico.dataInicio ? formatDate(servico.dataInicio) : '---'}</td>
+                        <td class="p-3 whitespace-nowrap">${servico.dataFim ? formatDate(servico.dataFim) : '---'}</td>
+                        <td class="p-3 whitespace-nowrap">
+                            <div class="flex gap-2">
+                                <button data-id="${servico.id}" class="btn-edit-servico btn-sm btn-warning p-2">Detalhes/Editar</button>
+                                ${servico.status === 'A Iniciar' ? `<button data-id="${servico.id}" class="btn-start-servico btn-sm p-2" style="background-color: var(--accent-orange); color: var(--bg-dark-primary);">Iniciar</button>` : ''}
+                                ${servico.status === 'Em Andamento' ? `<button data-id="${servico.id}" class="btn-end-servico btn-sm btn-primary p-2">Finalizar</button>` : ''}
+                            </div>
+                        </td>
+                    `;
+                });
+
+                tbody.querySelectorAll('.btn-start-servico').forEach(b => b.onclick = () => handleStartService(b.dataset.id));
+                tbody.querySelectorAll('.btn-end-servico').forEach(b => b.onclick = () => handleEndService(b.dataset.id));
+                tbody.querySelectorAll('.btn-edit-servico').forEach(b => b.onclick = () => openEditServicoModal(b.dataset.id));
+            };
+
+            const renderServicosDashboard = () => {
+                const counts = { aIniciar: 0, emAndamento: 0, finalizados: 0, atrasados: 0 };
+                const now = new Date();
+                servicos.forEach(s => {
+                    const isAtrasado = s.status === 'Em Andamento' && s.dataFim && now > new Date(s.dataFim);
+                    if (isAtrasado) {
+                        counts.atrasados++;
+                    }
+                    if (s.status === 'A Iniciar') counts.aIniciar++;
+                    else if (s.status === 'Em Andamento') counts.emAndamento++;
+                    else if (s.status === 'Finalizado') counts.finalizados++;
+                });
+
+                elements.countServAIniciar.textContent = counts.aIniciar;
+                elements.countServEmAndamento.textContent = counts.emAndamento;
+                elements.countServFinalizados.textContent = counts.finalizados;
+                elements.countServAtrasados.textContent = counts.atrasados;
+
+                const chartContainer = elements.servicosChartContainer;
+                chartContainer.innerHTML = '';
+                const total = servicos.length;
+                if (total === 0) {
+                    chartContainer.innerHTML = '<p class="text-center text-gray-500">Nenhum serviço para exibir no gráfico.</p>';
+                    return;
+                }
+
+                const chartData = [
+                    { label: 'A Iniciar', value: counts.aIniciar, color: 'var(--accent-yellow)' },
+                    { label: 'Em Andamento', value: counts.emAndamento, color: 'var(--accent-blue)' },
+                    { label: 'Finalizados', value: counts.finalizados, color: 'var(--accent-green)' },
+                    { label: 'Atrasados', value: counts.atrasados, color: 'var(--accent-red)' },
+                ];
+
+                chartData.forEach(item => {
+                    const percentage = total > 0 ? (item.value / total * 100).toFixed(1) : 0;
+                    const bar = document.createElement('div');
+                    bar.className = 'mb-2';
+                    bar.innerHTML = `
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm font-medium text-gray-300">${item.label} (${item.value})</span>
+                            <span class="text-sm font-medium text-gray-300">${percentage}%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-4">
+                            <div class="h-4 rounded-full" style="width: ${percentage}%; background-color: ${item.color}; transition: width 0.5s ease-in-out;"></div>
+                        </div>
+                    `;
+                    chartContainer.appendChild(bar);
+                });
+            };
+
+            const handleStartService = async (serviceId) => {
+                playSound('click');
+                try {
+                    await updateDoc(doc(db, `artifacts/${appId}/public/data/servicos`, serviceId), {
+                        status: 'Em Andamento',
+                        dataInicio: new Date().toISOString()
+                    });
+                    showGlobalMessage('Serviço iniciado!', 'success');
+                } catch (error) {
+                    console.error("Erro ao iniciar serviço:", error);
+                    showGlobalMessage('Falha ao iniciar serviço.', 'error');
+                }
+            };
+
+            const handleEndService = async (serviceId) => {
+                playSound('success');
+                try {
+                    await updateDoc(doc(db, `artifacts/${appId}/public/data/servicos`, serviceId), {
+                        status: 'Finalizado',
+                        dataFim: new Date().toISOString()
+                    });
+                    showGlobalMessage('Serviço finalizado com sucesso!', 'success');
+                } catch (error) {
+                    console.error("Erro ao finalizar serviço:", error);
+                    showGlobalMessage('Falha ao finalizar serviço.', 'error');
+                }
+            };
+
+            const openEditServicoModal = (serviceId) => {
+                const servico = servicos.find(s => s.id === serviceId);
+                if (!servico) return;
+
+                elements.editingServicoId.value = serviceId;
+                elements.servicoDescricao.textContent = servico.descricao;
+                elements.servicoStatus.value = servico.status;
+                elements.servicoDataInicio.value = toISOLocal(servico.dataInicio);
+                elements.servicoDataFim.value = toISOLocal(servico.dataFim);
+                elements.servicoMotivoAtraso.value = servico.motivoAtraso || '';
+
+                openModal(elements.editServicoModal);
+            };
+
+            const handleServicoEditSubmit = async () => {
+                const serviceId = elements.editingServicoId.value;
+                if (!serviceId) return;
+
+                const updatedData = {
+                    status: elements.servicoStatus.value,
+                    dataInicio: elements.servicoDataInicio.value ? new Date(elements.servicoDataInicio.value).toISOString() : null,
+                    dataFim: elements.servicoDataFim.value ? new Date(elements.servicoDataFim.value).toISOString() : null,
+                    motivoAtraso: elements.servicoMotivoAtraso.value.trim()
+                };
+
+                try {
+                    await updateDoc(doc(db, `artifacts/${appId}/public/data/servicos`, serviceId), updatedData);
+                    showGlobalMessage('Serviço atualizado com sucesso!', 'success');
+                    closeModal(elements.editServicoModal);
+                } catch (error) {
+                    console.error("Erro ao atualizar serviço:", error);
+                    showGlobalMessage('Falha ao atualizar serviço.', 'error');
+                }
+            };
+
+            const renderEficienciaTab = () => {
+                if (servicos.length === 0 || pedidos.length === 0) {
+                    elements.noSupplierEfficiencyMessage.classList.remove('hidden');
+                    return;
+                }
+
+                const supplierPerformance = {};
+
+                servicos.forEach(servico => {
+                    const pedido = pedidos.find(p => p.id === servico.pedidoId);
+                    if (!pedido) return;
+
+                    const fornecedor = pedido.fornecedor;
+                    if (!supplierPerformance[fornecedor]) {
+                        supplierPerformance[fornecedor] = {
+                            totalServicos: 0,
+                            finalizados: 0,
+                            totalCompletionTime: 0, // in milliseconds
+                        };
+                    }
+
+                    supplierPerformance[fornecedor].totalServicos++;
+                    if (servico.status === 'Finalizado' && servico.dataInicio && servico.dataFim) {
+                        supplierPerformance[fornecedor].finalizados++;
+                        const startTime = new Date(servico.dataInicio).getTime();
+                        const endTime = new Date(servico.dataFim).getTime();
+                        supplierPerformance[fornecedor].totalCompletionTime += (endTime - startTime);
+                    }
+                });
+
+                const performanceArray = Object.keys(supplierPerformance).map(fornecedor => {
+                    const stats = supplierPerformance[fornecedor];
+                    const avgTime = stats.finalizados > 0 ? (stats.totalCompletionTime / stats.finalizados) / (1000 * 60 * 60 * 24) : 0; // in days
+                    return {
+                        fornecedor,
+                        totalServicos: stats.totalServicos,
+                        finalizados: stats.finalizados,
+                        avgCompletionTime: avgTime.toFixed(2)
+                    };
+                }).sort((a, b) => a.avgCompletionTime - b.avgCompletionTime); // Sort by best average time
+
+                const tbody = elements.supplierEfficiencyTableBody;
+                tbody.innerHTML = '';
+                elements.noSupplierEfficiencyMessage.classList.toggle('hidden', performanceArray.length > 0);
+
+                performanceArray.forEach(item => {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td class="p-3 whitespace-nowrap">${item.fornecedor}</td>
+                        <td class="p-3 whitespace-nowrap">${item.totalServicos}</td>
+                        <td class="p-3 whitespace-nowrap">${item.finalizados}</td>
+                        <td class="p-3 whitespace-nowrap">${item.avgCompletionTime} dias</td>
+                    `;
+                });
+            };
+
+
             // --- REQUISICOES ---
             const renderRequisicoesTable = () => {
                 elements.requisicoesTableBody.innerHTML = '';
@@ -824,9 +1191,15 @@
                 container.innerHTML = '';
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
+                const searchTerm = elements.searchAcompanhamentoReq.value.toLowerCase();
 
-                const groupedBySolicitante = requisicoes.reduce((acc, req) => {
-                    if (req.status === 'Cancelada') return acc;
+                const filteredRequisicoes = requisicoes.filter(req => {
+                    if (req.status === 'Cancelada') return false;
+                    const searchString = `${req.numeroRequisicao} ${req.descricao} ${req.solicitante}`.toLowerCase();
+                    return searchString.includes(searchTerm);
+                });
+
+                const groupedBySolicitante = filteredRequisicoes.reduce((acc, req) => {
                     const solicitante = req.solicitante || 'Não Atribuído';
                     if (!acc[solicitante]) {
                         acc[solicitante] = { pendentes: [], emAndamento: [], atrasadas: [], entregues: [] };
@@ -853,14 +1226,14 @@
                     painelSolicitante.className = 'bg-dark-primary/50 rounded-lg p-4';
                     const { atrasadas, pendentes, emAndamento, entregues } = groupedBySolicitante[solicitante];
                     
-                    const createColumn = (title, requisicoes, color, isAlert = false) => {
-                        const cardsHTML = requisicoes.map((req, index) => `
+                    const createColumn = (title, reqs, color, isAlert = false) => {
+                        const cardsHTML = reqs.map((req, index) => `
                             <div class="kanban-card p-3 rounded-lg bg-${color}-900/30 border-l-4 border-${color}-500 mb-3 cursor-pointer hover:scale-105 transition-transform ${isAlert ? 'pulse-alert-red' : ''}" data-id="${req.id}" style="animation-delay: ${index * 50}ms">
                                 <p class="font-bold text-white">${req.numeroRequisicao}</p>
                                 <p class="text-sm text-gray-300 truncate" title="${req.descricao}">${req.descricao}</p>
                                 <p class="text-xs mt-2 text-${color}-300">Prev. Entrega: ${formatDate(req.dataPrevistaEntrega)}</p>
                             </div>`).join('');
-                        return `<div class="flex-1"><h4 class="text-lg font-semibold text-${color}-400 mb-3 px-1">${title} (${requisicoes.length})</h4>
+                        return `<div class="flex-1"><h4 class="text-lg font-semibold text-${color}-400 mb-3 px-1">${title} (${reqs.length})</h4>
                                 <div class="p-2 rounded-lg min-h-[10rem]">${cardsHTML || `<p class="text-center text-sm text-gray-500 mt-4">Nenhuma requisição.</p>`}</div></div>`;
                     };
 
@@ -879,6 +1252,7 @@
             const renderVisaoCriador = () => {
                 const container = elements.criadorRequisicoesContainer;
                 const selectedCriador = elements.criadorFilterSelect.value;
+                const searchTerm = elements.searchCriadorReq.value.toLowerCase();
                 container.innerHTML = '';
 
                 if (!selectedCriador) {
@@ -890,15 +1264,15 @@
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                const createColumn = (title, requisicoes, color, isAlert = false) => {
-                    const cardsHTML = requisicoes.map((req, index) => `
+                const createColumn = (title, reqs, color, isAlert = false) => {
+                    const cardsHTML = reqs.map((req, index) => `
                         <div class="kanban-card p-3 rounded-lg bg-${color}-900/30 border-l-4 border-${color}-500 mb-3 cursor-pointer hover:scale-105 transition-transform ${isAlert ? 'pulse-alert-red' : ''}" data-id="${req.id}" style="animation-delay: ${index * 50}ms">
                             <p class="font-bold text-white">${req.numeroRequisicao}</p>
                             <p class="text-sm text-gray-300 truncate" title="${req.descricao}">${req.descricao}</p>
                             <p class="text-xs mt-2 text-gray-400">Solicitante: ${req.solicitante}</p>
                             <p class="text-xs mt-1 text-${color}-300">Prev. Entrega: ${formatDate(req.dataPrevistaEntrega)}</p>
                         </div>`).join('');
-                    return `<div class="flex-1"><h4 class="text-lg font-semibold text-${color}-400 mb-3 px-1">${title} (${requisicoes.length})</h4>
+                    return `<div class="flex-1"><h4 class="text-lg font-semibold text-${color}-400 mb-3 px-1">${title} (${reqs.length})</h4>
                             <div class="p-2 rounded-lg min-h-[10rem]">${cardsHTML || `<p class="text-center text-sm text-gray-500 mt-4">Nenhuma requisição.</p>`}</div></div>`;
                 };
 
@@ -925,9 +1299,13 @@
                     container.appendChild(painelCriador);
                 };
 
+                const baseFilteredReqs = requisicoes.filter(r => {
+                    const searchString = `${r.numeroRequisicao} ${r.descricao} ${r.solicitante}`.toLowerCase();
+                    return r.status !== 'Cancelada' && searchString.includes(searchTerm);
+                });
+
                 if (selectedCriador === 'all') {
-                    const activeRequisitions = requisicoes.filter(r => r.status !== 'Cancelada');
-                    const groupedByCreator = activeRequisitions.reduce((acc, req) => {
+                    const groupedByCreator = baseFilteredReqs.reduce((acc, req) => {
                         const creator = req.criador || 'Não Atribuído';
                         if (!acc[creator]) acc[creator] = [];
                         acc[creator].push(req);
@@ -935,7 +1313,7 @@
                     }, {});
 
                     if (Object.keys(groupedByCreator).length === 0) {
-                        elements.noCriadorRequisicoesMessage.textContent = 'Nenhuma requisição encontrada para os criadores.';
+                        elements.noCriadorRequisicoesMessage.textContent = 'Nenhuma requisição encontrada para os critérios.';
                         elements.noCriadorRequisicoesMessage.classList.remove('hidden');
                     } else {
                         elements.noCriadorRequisicoesMessage.classList.add('hidden');
@@ -944,7 +1322,7 @@
                         }
                     }
                 } else {
-                    const filtered = requisicoes.filter(r => r.criador === selectedCriador && r.status !== 'Cancelada');
+                    const filtered = baseFilteredReqs.filter(r => r.criador === selectedCriador);
                     if (filtered.length === 0) {
                         elements.noCriadorRequisicoesMessage.textContent = `Nenhuma requisição encontrada para ${selectedCriador}.`;
                         elements.noCriadorRequisicoesMessage.classList.remove('hidden');
@@ -987,11 +1365,12 @@
 
                 try {
                     playSound('success');
+                    const collectionRef = collection(db, `artifacts/${appId}/public/data/requisicoes`);
                     if (currentEditingRequisicaoId) {
-                        await setDoc(doc(db, "requisicoes", currentEditingRequisicaoId), requisicaoData);
+                        await setDoc(doc(collectionRef, currentEditingRequisicaoId), requisicaoData);
                         showGlobalMessage('Requisição atualizada com sucesso!', 'success');
                     } else {
-                        await addDoc(collection(db, "requisicoes"), requisicaoData);
+                        await addDoc(collectionRef, requisicaoData);
                         showGlobalMessage('Requisição salva com sucesso!', 'success');
                     }
                     closeModal(elements.newRequisicaoModal);
@@ -1013,7 +1392,7 @@
 
                 const updateRequisicao = async (deliveryDate) => {
                     try {
-                        await updateDoc(doc(db, "requisicoes", requisicaoId), { 
+                        await updateDoc(doc(db, `artifacts/${appId}/public/data/requisicoes`, requisicaoId), { 
                             status: 'Entregue',
                             dataEntrega: deliveryDate
                         });
@@ -1072,7 +1451,7 @@
                 document.getElementById('confirmDelete').onclick = async () => {
                     playSound('error');
                     try {
-                        await deleteDoc(doc(db, "requisicoes", id));
+                        await deleteDoc(doc(db, `artifacts/${appId}/public/data/requisicoes`, id));
                         showGlobalMessage('Requisição excluída com sucesso.');
                     } catch (error) {
                         console.error("Erro ao excluir requisição:", error);
@@ -1159,7 +1538,14 @@
                 const container = elements.acompanhamentoContainer;
                 container.innerHTML = '';
                 const selectedColaborador = elements.colaboradorFilterSelect.value;
-                const pedidosPendentes = pedidos.filter(p => p.statusNFFiscal !== 'Entregue');
+                const searchTerm = elements.searchAcompanhamentoPedidos.value.toLowerCase();
+
+                const pedidosPendentes = pedidos.filter(p => {
+                    if (p.statusNFFiscal === 'Entregue') return false;
+                    const searchString = `${p.numeroPedido} ${p.fornecedor} ${p.descricaoPedido}`.toLowerCase();
+                    return searchString.includes(searchTerm);
+                });
+
                 let allGrouped = pedidosPendentes.reduce((acc, pedido) => {
                     const colaborador = pedido.nomeColaborador || 'Não Atribuído';
                     if (!acc[colaborador]) acc[colaborador] = { atrasados: [], pertoVencimento: [], dentroPrazo: [] };
@@ -1180,14 +1566,14 @@
                     const painelColaborador = document.createElement('div');
                     painelColaborador.className = 'bg-dark-primary/50 rounded-lg p-4';
                     const { atrasados, pertoVencimento, dentroPrazo } = groupedByColaborador[colaborador];
-                    const createColumn = (title, pedidos, color, isAlert) => {
-                        const cardsHTML = pedidos.map((pedido, index) => `
+                    const createColumn = (title, peds, color, isAlert) => {
+                        const cardsHTML = peds.map((pedido, index) => `
                             <div class="kanban-card p-3 rounded-lg bg-${color}-900/30 border-l-4 border-${color}-500 mb-3 cursor-pointer hover:scale-105 transition-transform ${isAlert ? 'pulse-alert-red' : ''}" data-id="${pedido.id}" style="animation-delay: ${index * 50}ms">
                                 <p class="font-bold text-white flex items-center gap-2">${color === 'yellow' ? warningIconSVG : ''} ${pedido.numeroPedido}</p>
                                 <p class="text-sm text-gray-300">${pedido.fornecedor}</p>
                                 <p class="text-xs mt-2 text-${color}-300">${formatDate(pedido.dataVencimento)}</p>
                             </div>`).join('');
-                        return `<div class="flex-1"><h4 class="text-lg font-semibold text-${color}-400 mb-3 px-1">${title} (${pedidos.length})</h4>
+                        return `<div class="flex-1"><h4 class="text-lg font-semibold text-${color}-400 mb-3 px-1">${title} (${peds.length})</h4>
                                 <div class="p-2 rounded-lg min-h-[10rem]">${cardsHTML || `<p class="text-center text-sm text-gray-500 mt-4">Nenhum pedido.</p>`}</div></div>`;
                     };
                     painelColaborador.innerHTML = `<h3 class="text-2xl font-bold text-white mb-4 border-b-2 border-blue-500 pb-2">${colaborador}</h3>
@@ -1246,6 +1632,8 @@
                 btn.disabled = true; spinner.classList.remove('hidden'); btnText.classList.add('hidden');
 
                 const valorTotalValue = elements.valorTotalInput.value;
+                const isService = elements.isServiceOrderCheckbox.checked;
+
                 const pedidoData = {
                     numeroPedido: elements.numeroPedidoInput.value.trim(), fornecedor: elements.fornecedorInputList.value.trim(), nomeColaborador: elements.nomeColaboradorSelect.value,
                     descricaoPedido: elements.descricaoPedidoInput.value.trim(), valorTotal: parseFloat(valorTotalValue), dataVencimento: elements.dataVencimentoInput.value,
@@ -1253,6 +1641,7 @@
                     createdAt: currentEditingPedidoId ? pedidos.find(p=>p.id===currentEditingPedidoId).createdAt : new Date().toISOString(),
                     statusNFFiscal: currentEditingPedidoId ? pedidos.find(p=>p.id===currentEditingPedidoId).statusNFFiscal : 'A Entregar',
                     dataEntregaFiscal: currentEditingPedidoId ? pedidos.find(p=>p.id===currentEditingPedidoId).dataEntregaFiscal : null,
+                    isServiceOrder: isService
                 };
 
                 const resetSubmitButton = () => { btn.disabled = false; spinner.classList.add('hidden'); btnText.classList.remove('hidden'); };
@@ -1266,13 +1655,33 @@
 
                 try {
                     playSound('success');
-                    if (currentEditingPedidoId) {
-                        await setDoc(doc(db, "pedidos", currentEditingPedidoId), pedidoData);
+                    const collectionRef = collection(db, `artifacts/${appId}/public/data/pedidos`);
+                    let pedidoId = currentEditingPedidoId;
+
+                    if (pedidoId) {
+                        await setDoc(doc(collectionRef, pedidoId), pedidoData);
                         showGlobalMessage('Pedido atualizado com sucesso!', 'success');
                     } else {
-                        await addDoc(collection(db, "pedidos"), pedidoData);
+                        const newDocRef = await addDoc(collectionRef, pedidoData);
+                        pedidoId = newDocRef.id;
                         showGlobalMessage('Pedido lançado com sucesso!', 'success');
                     }
+
+                    if(isService) {
+                        const servicoData = {
+                            descricao: pedidoData.descricaoPedido,
+                            pedidoId: pedidoId,
+                            status: 'A Iniciar',
+                            createdAt: new Date().toISOString(),
+                            dataInicio: null,
+                            dataFim: null,
+                            motivoAtraso: ''
+                        };
+                        const servicosCollectionRef = collection(db, `artifacts/${appId}/public/data/servicos`);
+                        await addDoc(servicosCollectionRef, servicoData);
+                        showGlobalMessage('Serviço criado e vinculado ao pedido.', 'success');
+                    }
+
                     closeModal(elements.newOrderModal);
                     clearOrderForm();
                 } catch (error) { console.error("Erro ao submeter pedido:", error); showMessage('Erro ao salvar o pedido.', 'error', elements.messageBoxNewOrderModal); } 
@@ -1288,6 +1697,7 @@
                 elements.valorTotalInput.value = pedido.valorTotal; elements.numeroNotaFiscalInput.value = pedido.numeroNotaFiscal || '';
                 elements.dataEmissaoNFInput.value = pedido.dataEmissaoNF || ''; elements.dataVencimentoInput.value = pedido.dataVencimento;
                 elements.observacoesInput.value = pedido.observacoes || '';
+                elements.isServiceOrderCheckbox.checked = pedido.isServiceOrder || false;
                 elements.newOrderModalTitle.textContent = 'Editar Pedido';
                 elements.submitOrderButton.querySelector('.btn-text').textContent = 'Salvar Edição';
                 openModal(elements.newOrderModal);
@@ -1296,7 +1706,7 @@
             const marcarComoEntregue = async (pedidoId) => {
                 playSound('success');
                 try {
-                    await updateDoc(doc(db, "pedidos", pedidoId), { statusNFFiscal: 'Entregue', dataEntregaFiscal: new Date().toISOString().split('T')[0] });
+                    await updateDoc(doc(db, `artifacts/${appId}/public/data/pedidos`, pedidoId), { statusNFFiscal: 'Entregue', dataEntregaFiscal: new Date().toISOString().split('T')[0] });
                     showGlobalMessage('Pedido marcado como Entregue.', 'success');
                 } catch (error) { console.error("Erro ao marcar como entregue:", error); showGlobalMessage('Falha ao atualizar pedido.', 'error'); }
             };
@@ -1313,7 +1723,7 @@
                 document.getElementById('confirmDelete').onclick = async () => {
                     playSound('error');
                     try {
-                        await deleteDoc(doc(db, "pedidos", pedidoId));
+                        await deleteDoc(doc(db, `artifacts/${appId}/public/data/pedidos`, pedidoId));
                         showGlobalMessage('Pedido excluído com sucesso.');
                     } catch (error) {
                         console.error("Erro ao excluir pedido:", error);
@@ -1350,8 +1760,8 @@
                 document.getElementById('confirmDelete').onclick = async () => {
                     playSound('error');
                     try {
-                        const firestorePath = `metadata/${collectionName}`;
-                        await setDoc(doc(db, firestorePath), { items: currentList.filter(i => i.id !== id) });
+                        const docRef = doc(db, `artifacts/${appId}/public/data/metadata`, collectionName);
+                        await setDoc(docRef, { items: currentList.filter(i => i.id !== id) });
                         showGlobalMessage(`${listName} excluído.`, 'success');
                     } catch (error) { showGlobalMessage(`Erro ao excluir ${listName}.`, 'error'); }
                     finally { document.body.removeChild(confirmModal); }
@@ -1364,10 +1774,12 @@
             const excluirSolicitante = createItemDeleter('Solicitante', 'solicitantes', name => requisicoes.some(r => r.solicitante === name));
 
             const renderCadastroTables = () => {
-                const renderTable = (tbody, data, noMsgEl, deleteHandler, emailField = false) => {
+                const renderTable = (tbody, data, noMsgEl, deleteHandler, searchInput, emailField = false) => {
+                    const searchTerm = searchInput.value.toLowerCase();
+                    const filteredData = data.filter(item => item.nome.toLowerCase().includes(searchTerm));
                     tbody.innerHTML = '';
-                    noMsgEl.classList.toggle('hidden', data.length > 0);
-                    data.forEach(item => {
+                    noMsgEl.classList.toggle('hidden', filteredData.length > 0);
+                    filteredData.forEach(item => {
                         const row = tbody.insertRow();
                         let cells = `<td class="p-3">${item.nome}</td>`;
                         if (emailField) {
@@ -1378,9 +1790,9 @@
                     });
                      tbody.querySelectorAll('.btn-delete').forEach(b => b.onclick = () => deleteHandler(b.dataset.id));
                 };
-                renderTable(elements.fornecedoresTableBody, fornecedores, elements.noFornecedoresMessage, excluirFornecedor);
-                renderTable(elements.colaboradoresTableBody, colaboradores, elements.noColaboradoresMessage, excluirColaborador, true);
-                renderTable(elements.solicitantesTableBody, solicitantes, elements.noSolicitantesMessage, excluirSolicitante);
+                renderTable(elements.fornecedoresTableBody, fornecedores, elements.noFornecedoresMessage, excluirFornecedor, elements.searchFornecedor);
+                renderTable(elements.colaboradoresTableBody, colaboradores, elements.noColaboradoresMessage, excluirColaborador, elements.searchColaborador, true);
+                renderTable(elements.solicitantesTableBody, solicitantes, elements.noSolicitantesMessage, excluirSolicitante, elements.searchSolicitante);
             };
 
             const addItem = async (itemName, list, messageBoxEl, collectionName, ...fields) => {
@@ -1402,8 +1814,8 @@
 
                 try {
                     playSound('success');
-                    const firestorePath = `metadata/${collectionName}`;
-                    await setDoc(doc(db, firestorePath), { items: [...list, newItem] });
+                    const docRef = doc(db, `artifacts/${appId}/public/data/metadata`, collectionName);
+                    await setDoc(docRef, { items: [...list, newItem] });
                     fields.forEach(f => f.input.value = '');
                     showMessage(`${itemName} adicionado!`, 'success', messageBoxEl);
                     setTimeout(() => closeModal(fields[0].input.closest('.modal')), 1000);
@@ -1500,7 +1912,7 @@
                 if (requisitionsToDelete.length > 0) {
                     const batch = writeBatch(db);
                     requisitionsToDelete.forEach(req => {
-                        const reqRef = doc(db, "requisicoes", req.id);
+                        const reqRef = doc(db, `artifacts/${appId}/public/data/requisicoes`, req.id);
                         batch.delete(reqRef);
                     });
                     await batch.commit();
@@ -1509,14 +1921,19 @@
             };
 
             const setupListeners = () => {
-                onSnapshot(collection(db, "pedidos"), (snapshot) => { 
+                if (!userId) {
+                    console.error("Não é possível configurar os listeners: ID do usuário não encontrado.");
+                    return;
+                }
+                onSnapshot(collection(db, `artifacts/${appId}/public/data/pedidos`), (snapshot) => { 
                     pedidos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
                     renderPedidosTable();
                     renderDashboardLists();
                     renderAcompanhamento();
                     updateDashboardKPIs();
+                    renderEficienciaTab();
                 });
-                onSnapshot(collection(db, "requisicoes"), (snapshot) => { 
+                onSnapshot(collection(db, `artifacts/${appId}/public/data/requisicoes`), (snapshot) => { 
                     requisicoes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
                     renderRequisicoesTable();
                     renderRequisicoesKPIs();
@@ -1524,24 +1941,31 @@
                     renderVisaoCriador();
                     deleteOldDeliveredRequisitions();
                 });
-                onSnapshot(doc(db, "metadata", "fornecedores"), (docSnapshot) => { 
+                onSnapshot(collection(db, `artifacts/${appId}/public/data/servicos`), (snapshot) => { 
+                    servicos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+                    renderServicosTable();
+                    renderServicosDashboard();
+                    renderEficienciaTab();
+                });
+                onSnapshot(doc(db, `artifacts/${appId}/public/data/metadata`, "fornecedores"), (docSnapshot) => { 
                     fornecedores = docSnapshot.exists() ? docSnapshot.data().items || [] : []; 
                     populateSelects();
                     renderCadastroTables();
                 });
-                onSnapshot(doc(db, "metadata", "colaboradores"), (docSnapshot) => { 
+                onSnapshot(doc(db, `artifacts/${appId}/public/data/metadata`, "colaboradores"), (docSnapshot) => { 
                     colaboradores = docSnapshot.exists() ? docSnapshot.data().items || [] : []; 
                     populateSelects();
                     renderCadastroTables();
                     renderAcompanhamento();
                     renderVisaoCriador();
                 });
-                onSnapshot(doc(db, "metadata", "solicitantes"), (docSnapshot) => { 
+                onSnapshot(doc(db, `artifacts/${appId}/public/data/metadata`, "solicitantes"), (docSnapshot) => { 
                     solicitantes = docSnapshot.exists() ? docSnapshot.data().items || [] : []; 
                     populateSelects();
                     renderCadastroTables();
                 });
                 elements.loadingOverlay.classList.add('hidden');
+                showView('menu', true);
             };
 
             onAuthStateChanged(auth, async (user) => {
@@ -1552,9 +1976,13 @@
                     setupListeners();
                 } else { 
                     try {
-                        await signInAnonymously(auth); 
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth); 
+                        }
                     } catch (error) {
-                        console.error("Erro de autenticação anônima:", error); 
+                        console.error("Erro de autenticação:", error); 
                         elements.loadingOverlay.classList.add('hidden'); 
                     }
                 }
@@ -1576,6 +2004,15 @@
                 container.querySelector(`#contentReq${tabId}`).classList.add('active');
                 container.querySelectorAll('.tab-button[data-req-tab]').forEach(b => b.classList.remove('active'));
                 container.querySelector(`.tab-button[data-req-tab="${tabId}"]`).classList.add('active');
+            };
+            
+            const showServicosTab = (tabId) => {
+                playSound('tab');
+                const container = elements.servicosView;
+                container.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+                container.querySelector(`#contentServ${tabId}`).classList.add('active');
+                container.querySelectorAll('.tab-button[data-serv-tab]').forEach(b => b.classList.remove('active'));
+                container.querySelector(`.tab-button[data-serv-tab="${tabId}"]`).classList.add('active');
             };
 
             const handleLastVisit = () => {
@@ -1600,11 +2037,14 @@
             // Event Listeners
             elements.goToPedidosBtn.onclick = () => showView('pedidos');
             elements.goToRequisicoesBtn.onclick = () => showView('requisicoes');
+            elements.goToServicosBtn.onclick = () => showView('servicos');
             elements.backToMenuFromPedidosBtn.onclick = () => showView('menu');
             elements.backToMenuFromRequisicoesBtn.onclick = () => showView('menu');
+            elements.backToMenuFromServicosBtn.onclick = () => showView('menu');
 
             elements.pedidosView.querySelectorAll('.tab-button[data-tab]').forEach(b => b.addEventListener('click', () => showPedidosTab(b.dataset.tab)));
             elements.requisicoesView.querySelectorAll('.tab-button[data-req-tab]').forEach(b => b.addEventListener('click', () => showRequisicoesTab(b.dataset.reqTab)));
+            elements.servicosView.querySelectorAll('.tab-button[data-serv-tab]').forEach(b => b.addEventListener('click', () => showServicosTab(b.dataset.servTab)));
             
             elements.addOrderBtnPedidosTab.onclick = () => { clearOrderForm(); openModal(elements.newOrderModal); };
             elements.closeNewOrderModalButton.onclick = () => closeModal(elements.newOrderModal);
@@ -1629,13 +2069,24 @@
             elements.closeSolicitanteModal.onclick = () => closeModal(elements.newSolicitanteModal);
             elements.btnAdicionarSolicitante.onclick = () => addItem('Solicitante', solicitantes, elements.messageBoxSolicitantes, 'solicitantes', {input: elements.modalSolicitanteNomeInput, name: 'nome', required: true});
 
+            // Search Listeners
             elements.searchPedidoInput.onkeyup = renderPedidosTable;
             elements.searchRequisicaoInput.onkeyup = renderRequisicoesTable;
+            elements.searchServicoInput.onkeyup = renderServicosTable;
             elements.colaboradorFilterSelect.onchange = renderAcompanhamento;
+            elements.searchAcompanhamentoPedidos.onkeyup = renderAcompanhamento;
+            elements.searchFornecedor.onkeyup = () => renderCadastroTables();
+            elements.searchColaborador.onkeyup = () => renderCadastroTables();
+            elements.searchSolicitante.onkeyup = () => renderCadastroTables();
+            elements.searchAcompanhamentoReq.onkeyup = renderAcompanhamentoRequisicoes;
             elements.criadorFilterSelect.onchange = renderVisaoCriador;
+            elements.searchCriadorReq.onkeyup = renderVisaoCriador;
+            
             elements.exportCsvBtn.onclick = exportToCSV;
             
             elements.closeKpiDetailsModal.onclick = () => closeModal(elements.kpiDetailsModal);
+            elements.closeEditServicoModal.onclick = () => closeModal(elements.editServicoModal);
+            elements.submitServicoEditButton.onclick = handleServicoEditSubmit;
             
             elements.fabAddOrder.onclick = () => { clearOrderForm(); openModal(elements.newOrderModal); };
             elements.fabAddRequisicao.onclick = () => { clearRequisicaoForm(); openModal(elements.newRequisicaoModal); };
@@ -1680,9 +2131,9 @@
             window.addEventListener('offline', () => elements.offlineIndicator.classList.add('visible'));
             if (!navigator.onLine) elements.offlineIndicator.classList.add('visible');
 
-            // Initial view
-            showView('menu', true);
+            // Initial setup
             showRequisicoesTab('Dashboard');
+            showServicosTab('Dashboard');
         });
 
     </script>
